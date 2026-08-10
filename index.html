@@ -1014,6 +1014,7 @@ function renderCards() {
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
       if (!c) return;
+      row.style.display = 'block';
       row.innerHTML = `
         <div class="due-edit-row" style="width:100%">
           <div class="money-input-wrap" style="flex:1"><input type="number" step="0.01" value="${c.statementBalance || ''}" placeholder="Statement balance" id="statement-edit-${cardId}" /></div>
