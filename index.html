@@ -449,6 +449,16 @@
     <canvas id="balance-bar-chart" role="img" aria-label="Bar chart of current balance per card"></canvas>
   </div>
 
+  <div id="statement-compare-box" style="display:none">
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:18px 0 10px;font-size:12.5px;color:var(--text-secondary);font-weight:500">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#9A9AAE;display:inline-block"></span>Statement balance</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block"></span>Current balance owed</span>
+    </div>
+    <div class="chart-box" style="height:240px">
+      <canvas id="statement-compare-chart" role="img" aria-label="Bar chart comparing statement balance to current balance owed, per card"></canvas>
+    </div>
+  </div>
+
   <div class="form-box" id="monthly-cost-box">
     <p>What each card is costing you</p>
     <div id="monthly-cost-list"></div>
@@ -666,6 +676,8 @@
     ·
     <button class="reset-link" id="reset-btn">Reset all data</button>
     <br>
+    <button class="reset-link" id="reset-tracking-btn">Reset progress tracking (keep cards &amp; balances)</button>
+    <br>
     <button class="reset-link" id="export-btn">Export backup file</button>
     ·
     <button class="reset-link" id="import-btn">Import backup file</button>
@@ -678,10 +690,10 @@ let pushTimer = null;
 const CARD_CATEGORIES = ['Main spending', 'Groceries', 'Dining & restaurants', 'Gas & transit', 'Travel', 'Cashback (general)', 'Balance transfer', 'Emergency / backup', 'Other'];
 
 const seedCards = [
-  { id: 'amex', name: 'Amex Blue Cash Everyday', balance: 653.98, apr: 28.49, color: '#2E77BB', min: 25, dueDate: '2026-08-20', limit: 1000, categories: ['Groceries', 'Gas & transit'], cycleAnchor: '2026-08-20', cycleStreak: 0, lastHandledCycleIndex: null },
-  { id: 'freedom', name: 'Chase Freedom Unlimited', balance: 514.00, apr: 27.74, color: '#00A9E0', min: 40, dueDate: '2026-08-07', limit: 824, categories: ['Main spending', 'Cashback (general)'], cycleAnchor: '2026-08-07', cycleStreak: 0, lastHandledCycleIndex: null },
-  { id: 'sapphire', name: 'Chase Sapphire Preferred', balance: 0.00, apr: 27.49, color: '#5C6BC0', min: 40, dueDate: '2026-08-13', limit: 5000, categories: ['Travel', 'Dining & restaurants'], cycleAnchor: '2026-08-13', cycleStreak: 0, lastHandledCycleIndex: null },
-  { id: 'discover', name: 'Discover', balance: 46.37, apr: 26.49, color: '#FF6000', min: 25.45, dueDate: '2026-08-17', limit: 1500, categories: ['Cashback (general)'], cycleAnchor: '2026-08-17', cycleStreak: 0, lastHandledCycleIndex: null }
+  { id: 'amex', name: 'Amex Blue Cash Everyday', balance: 670.03, apr: 28.49, color: '#2E77BB', min: 25, dueDate: '2026-08-20', limit: 1000, categories: ['Groceries', 'Gas & transit'], cycleAnchor: '2026-08-20', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2027-05-26' },
+  { id: 'freedom', name: 'Chase Freedom Unlimited', balance: 847.55, apr: 27.74, color: '#00A9E0', min: 40, dueDate: '2026-09-07', limit: 1000, categories: ['Main spending', 'Cashback (general)'], cycleAnchor: '2026-09-07', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2026-11-10' },
+  { id: 'sapphire', name: 'Chase Sapphire Preferred', balance: 0.00, apr: 27.49, color: '#5C6BC0', min: 40, dueDate: '2026-10-13', limit: 5000, categories: ['Travel', 'Dining & restaurants'], cycleAnchor: '2026-10-13', cycleStreak: 0, lastHandledCycleIndex: null },
+  { id: 'discover', name: 'Discover', balance: 100.35, apr: 26.49, color: '#FF6000', min: 25.45, dueDate: '2026-08-17', limit: 1500, categories: ['Cashback (general)'], cycleAnchor: '2026-08-17', cycleStreak: 0, lastHandledCycleIndex: null }
 ];
 
 let cards = JSON.parse(localStorage.getItem('cc-tracker-cards-v2') || 'null') || JSON.parse(JSON.stringify(seedCards));
@@ -720,6 +732,7 @@ if (celebratedRaw === null) {
 
 let chart = null;
 let barChart = null;
+let statementCompareChart = null;
 let reserveChart = null;
 
 if (window.Chart) {
@@ -835,6 +848,7 @@ function renderCards() {
       dueSoon = daysAway >= 0 && daysAway <= 14;
     }
 
+    const hasStatement = c.statementBalance != null && c.statementBalance > 0.005;
     const util = c.limit > 0 ? Math.round((c.balance / c.limit) * 1000) / 10 : null;
     let utilColor = 'var(--success)';
     if (util !== null) {
@@ -852,6 +866,7 @@ function renderCards() {
         <div class="meta-row"><span>Min payment</span><span style="${dueSoon ? 'color:var(--danger)' : ''}">${fmt(c.min || 0)}</span></div>
         <div class="meta-row editable due-date-row${dueSoon ? ' due-soon' : ''}" data-card-id="${c.id}"><span>Due date</span><span>${dueLabel}</span></div>
         <div class="meta-row editable credit-limit-row" data-card-id="${c.id}"><span>Credit limit</span><span>${c.limit > 0 ? fmt(c.limit) : 'Set limit'}</span></div>
+        <div class="meta-row editable statement-balance-row" data-card-id="${c.id}"><span>Statement balance</span><span>${hasStatement ? fmt(c.statementBalance) : 'Not set'}</span></div>
         <div class="meta-row editable promo-apr-row" data-card-id="${c.id}" style="${isInPromoPeriod(c) ? 'display:block' : ''}">
           ${isInPromoPeriod(c)
             ? `<div style="display:flex;justify-content:space-between;gap:8px"><span>Promo APR</span><span style="color:var(--success);font-weight:600">${getEffectiveApr(c, 0)}%</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">Until ${new Date(c.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
@@ -862,6 +877,7 @@ function renderCards() {
       ${c.balance > 0.005 ? `
       <div class="full-payoff-actions">
         ${c.min > 0 ? `<button class="mark-paid-btn card-pay-min-btn" data-card-id="${c.id}" title="Pay minimum: ${fmt(Math.min(c.min, c.balance))}">Pay min · ${fmt(Math.min(c.min, c.balance))}</button>` : ''}
+        ${hasStatement && c.statementBalance < c.balance - 0.005 ? `<button class="mark-paid-btn card-pay-statement-btn" data-card-id="${c.id}" title="Pay statement balance: ${fmt(Math.min(c.statementBalance, c.balance))}">Pay statement · ${fmt(Math.min(c.statementBalance, c.balance))}</button>` : ''}
         <button class="mark-paid-btn full-pay-btn" data-card-id="${c.id}">Pay in full</button>
         <button class="dismiss-btn full-dismiss-btn" data-card-id="${c.id}">Already paid in full</button>
       </div>` : ''}
@@ -939,6 +955,15 @@ function renderCards() {
     });
   });
 
+  list.querySelectorAll('.card-pay-statement-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = 'Statement paid';
+      payStatementBalance(btn.getAttribute('data-card-id'));
+    });
+  });
+
   list.querySelectorAll('.full-pay-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
@@ -979,6 +1004,42 @@ function renderCards() {
           render();
         }
       });
+    });
+  });
+
+  list.querySelectorAll('.statement-balance-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if (row.dataset.editing === 'true') return;
+      row.dataset.editing = 'true';
+      const cardId = row.getAttribute('data-card-id');
+      const c = cards.find(x => x.id === cardId);
+      if (!c) return;
+      row.innerHTML = `
+        <div class="due-edit-row" style="width:100%">
+          <div class="money-input-wrap" style="flex:1"><input type="number" step="0.01" value="${c.statementBalance || ''}" placeholder="Statement balance" id="statement-edit-${cardId}" /></div>
+          <button data-save="${cardId}">Save</button>
+          ${c.statementBalance > 0.005 ? `<button data-clear="${cardId}" style="border-color:var(--danger);color:var(--danger)">Clear</button>` : ''}
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">What your last bill said you owed — separate from your current balance, which may include newer charges.</div>
+      `;
+      row.querySelector('[data-save]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newVal = parseFloat(document.getElementById(`statement-edit-${cardId}`).value);
+        if (!isNaN(newVal) && newVal >= 0) {
+          c.statementBalance = newVal;
+          saveData();
+          render();
+        }
+      });
+      const clearBtn = row.querySelector('[data-clear]');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          c.statementBalance = 0;
+          saveData();
+          render();
+        });
+      }
     });
   });
 
@@ -1321,6 +1382,69 @@ function renderBarChart() {
   });
 }
 
+function renderStatementCompareChart() {
+  const box = document.getElementById('statement-compare-box');
+  const cardsWithStatement = cards.filter(c => c.statementBalance != null && c.statementBalance > 0.005);
+
+  if (!window.Chart || cardsWithStatement.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+
+  const ctx = document.getElementById('statement-compare-chart');
+  if (statementCompareChart) statementCompareChart.destroy();
+
+  statementCompareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: cardsWithStatement.map(c => c.name),
+      datasets: [
+        {
+          label: 'Statement balance',
+          data: cardsWithStatement.map(c => Math.round(c.statementBalance * 100) / 100),
+          backgroundColor: '#9A9AAE',
+          hoverBackgroundColor: '#B4B4C4',
+          borderRadius: 6,
+          maxBarThickness: 42
+        },
+        {
+          label: 'Current balance owed',
+          data: cardsWithStatement.map(c => Math.round(c.balance * 100) / 100),
+          backgroundColor: cardsWithStatement.map(c => c.color || '#4FA3FF'),
+          hoverBackgroundColor: cardsWithStatement.map(c => lightenColor(c.color || '#4FA3FF', 30)),
+          borderRadius: 6,
+          maxBarThickness: 42
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400, easing: 'easeOutQuad' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1C1C22',
+          borderColor: '#2C2C36',
+          borderWidth: 1,
+          titleColor: '#7FBFFF',
+          bodyColor: '#EDEDF2',
+          padding: 10,
+          boxPadding: 4,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        y: { ticks: { callback: v => '$' + v.toLocaleString(), color: '#9A9AAE', padding: 8 }, grid: { color: '#2C2C36' }, beginAtZero: true },
+        x: { ticks: { color: '#9A9AAE', autoSkip: false, maxRotation: 20 }, grid: { display: false } }
+      }
+    }
+  });
+}
+
 function getUpcomingCards() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1458,6 +1582,28 @@ function markCardPaid(cardId) {
     previousDueDate: previousDueDate
   });
   spendFromReserve(payAmount, `Paid toward ${card.name}`);
+  saveData();
+  render();
+  renderReserves();
+}
+
+function payStatementBalance(cardId) {
+  const card = cards.find(c => c.id === cardId);
+  if (!card || !(card.statementBalance > 0.005) || card.balance <= 0.005) return;
+  const amount = Math.min(card.statementBalance, card.balance);
+  const previousDueDate = card.dueDate;
+  card.balance = Math.max(0, card.balance - amount);
+  if (card.dueDate) {
+    card.dueDate = pushDueDateOneCycle(card.dueDate);
+  }
+  markCardCycleHandled(card);
+  history.push({
+    id: Date.now() + Math.random(), cardId, type: 'payment', amount,
+    note: `Paid statement balance: ${card.name}`, date: new Date().toISOString(),
+    previousDueDate: previousDueDate
+  });
+  spendFromReserve(amount, `Paid statement balance: ${card.name}`);
+  card.statementBalance = 0;
   saveData();
   render();
   renderReserves();
@@ -1769,6 +1915,7 @@ function render() {
   checkMilestones();
   renderUpcomingBanner();
   renderBarChart();
+  renderStatementCompareChart();
   renderHistory();
   renderChart();
   renderAffordability();
@@ -2459,6 +2606,27 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   document.getElementById('target-date').value = '';
   document.getElementById('target-result').innerHTML = '';
   document.getElementById('reserve-amount').value = '';
+});
+
+document.getElementById('reset-tracking-btn').addEventListener('click', () => {
+  const btn = document.getElementById('reset-tracking-btn');
+  if (btn.dataset.confirming === 'true') {
+    history.forEach(h => { h.deleted = true; });
+    saveData();
+    render();
+    renderReserves();
+    btn.dataset.confirming = 'false';
+    btn.textContent = 'Reset progress tracking (keep cards & balances)';
+    return;
+  }
+  btn.dataset.confirming = 'true';
+  btn.textContent = 'Click again to confirm — today\u2019s balances become your new starting point';
+  setTimeout(() => {
+    if (btn.dataset.confirming === 'true') {
+      btn.dataset.confirming = 'false';
+      btn.textContent = 'Reset progress tracking (keep cards & balances)';
+    }
+  }, 4000);
 });
 
 function spendFromReserve(amount, note) {
