@@ -468,6 +468,7 @@
     <p>What's the smartest way to pay?</p>
     <div class="row">
       <select id="strategy-select" style="width:auto;flex:1;min-width:200px">
+        <option value="statement" selected>Statement-aware — avoid interest first</option>
         <option value="avalanche">Avalanche — highest APR first</option>
         <option value="snowball">Snowball — smallest balance first</option>
         <option value="hybrid">Smart — highest monthly cost first</option>
@@ -690,10 +691,10 @@ let pushTimer = null;
 const CARD_CATEGORIES = ['Main spending', 'Groceries', 'Dining & restaurants', 'Gas & transit', 'Travel', 'Cashback (general)', 'Balance transfer', 'Emergency / backup', 'Other'];
 
 const seedCards = [
-  { id: 'amex', name: 'Amex Blue Cash Everyday', balance: 670.03, apr: 28.49, color: '#2E77BB', min: 25, dueDate: '2026-08-20', limit: 1000, categories: ['Groceries', 'Gas & transit'], cycleAnchor: '2026-08-20', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2027-05-26' },
-  { id: 'freedom', name: 'Chase Freedom Unlimited', balance: 847.55, apr: 27.74, color: '#00A9E0', min: 40, dueDate: '2026-09-07', limit: 1000, categories: ['Main spending', 'Cashback (general)'], cycleAnchor: '2026-09-07', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2026-11-10' },
-  { id: 'sapphire', name: 'Chase Sapphire Preferred', balance: 0.00, apr: 27.49, color: '#5C6BC0', min: 40, dueDate: '2026-10-13', limit: 5000, categories: ['Travel', 'Dining & restaurants'], cycleAnchor: '2026-10-13', cycleStreak: 0, lastHandledCycleIndex: null },
-  { id: 'discover', name: 'Discover', balance: 100.35, apr: 26.49, color: '#FF6000', min: 25.45, dueDate: '2026-08-17', limit: 1500, categories: ['Cashback (general)'], cycleAnchor: '2026-08-17', cycleStreak: 0, lastHandledCycleIndex: null }
+  { id: 'amex', name: 'Amex Blue Cash Everyday', balance: 747.79, statementBalance: 546.21, apr: 28.49, color: '#2E77BB', min: 25, dueDate: '2026-08-20', limit: 1000, categories: ['Groceries', 'Gas & transit'], cycleAnchor: '2026-08-20', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2027-05-26' },
+  { id: 'freedom', name: 'Chase Freedom Unlimited', balance: 941.29, statementBalance: 941.29, apr: 27.74, color: '#00A9E0', min: 40, dueDate: '2026-09-07', limit: 1000, categories: ['Main spending', 'Cashback (general)'], cycleAnchor: '2026-09-07', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2026-11-10' },
+  { id: 'sapphire', name: 'Chase Sapphire Preferred', balance: 131.65, statementBalance: null, apr: 27.49, color: '#5C6BC0', min: 40, dueDate: '2026-09-13', limit: 5000, categories: ['Travel', 'Dining & restaurants'], cycleAnchor: '2026-09-13', cycleStreak: 0, lastHandledCycleIndex: null },
+  { id: 'discover', name: 'Discover', balance: 421.14, statementBalance: 249.12, apr: 26.49, color: '#FF6000', min: 25.45, dueDate: '2026-08-17', limit: 1500, categories: ['Cashback (general)'], cycleAnchor: '2026-08-17', cycleStreak: 0, lastHandledCycleIndex: null }
 ];
 
 let cards = JSON.parse(localStorage.getItem('cc-tracker-cards-v2') || 'null') || JSON.parse(JSON.stringify(seedCards));
@@ -1992,13 +1993,25 @@ function updateTypeHint() {
 document.getElementById('type-select').addEventListener('change', updateTypeHint);
 updateTypeHint();
 
+function monthsUntilPromoEnd(card, monthsFromNow) {
+  if (!card.promoUntil) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  now.setMonth(now.getMonth() + (monthsFromNow || 0));
+  const end = new Date(card.promoUntil + 'T00:00:00');
+  const diff = (end - now) / (1000 * 60 * 60 * 24 * 30.44);
+  return diff > 0 ? Math.max(1, Math.ceil(diff)) : 0;
+}
+
 function getStrategyOrder(list, strategy) {
+  if (strategy === 'statement') return [...list].sort((a, b) => getEffectiveApr(b) - getEffectiveApr(a) || b.apr - a.apr);
   if (strategy === 'snowball') return [...list].sort((a, b) => a.balance - b.balance);
   if (strategy === 'hybrid') return [...list].sort((a, b) => (b.balance * getEffectiveApr(b)) - (a.balance * getEffectiveApr(a)));
   return [...list].sort((a, b) => getEffectiveApr(b) - getEffectiveApr(a));
 }
 
 function getStrategyLabel(strategy) {
+  if (strategy === 'statement') return 'statement-aware (avoid interest first)';
   if (strategy === 'snowball') return 'smallest-balance-first (snowball)';
   if (strategy === 'hybrid') return 'highest-monthly-cost-first (smart)';
   return 'highest-APR-first (avalanche)';
@@ -2026,20 +2039,72 @@ function calculateAllocation(amount, strategy) {
     budget -= m;
   });
 
-  const order = getStrategyOrder(active, strategy);
+  const reasons = {};
+  let order;
 
-  for (const c of order) {
-    if (budget <= 0) break;
-    const extra = Math.min(budget, remaining[c.id]);
-    pay[c.id] += extra;
-    remaining[c.id] -= extra;
-    budget -= extra;
+  if (strategy === 'statement') {
+    // Tier 2: cover statement balances on cards where interest is live (no active promo),
+    // preserving/regaining the grace period so the whole balance accrues nothing.
+    const graceTargets = active
+      .filter(c => !isInPromoPeriod(c) && c.statementBalance > 0.005)
+      .sort((a, b) => b.apr - a.apr);
+    for (const c of graceTargets) {
+      if (budget <= 0) break;
+      const stmtLeft = Math.max(0, Math.min(c.statementBalance, c.balance) - pay[c.id]);
+      const topUp = Math.min(budget, stmtLeft, remaining[c.id]);
+      if (topUp > 0.005) {
+        pay[c.id] += topUp;
+        remaining[c.id] -= topUp;
+        budget -= topUp;
+        reasons[c.id] = 'covers statement — keeps this card interest-free';
+      }
+    }
+
+    // Tier 3: promo-cliff glide path — pay enough on 0% cards to clear them before the rate jumps.
+    const cliffTargets = active
+      .filter(c => isInPromoPeriod(c) && monthsUntilPromoEnd(c) !== null && remaining[c.id] > 0.005)
+      .sort((a, b) => monthsUntilPromoEnd(a) - monthsUntilPromoEnd(b));
+    for (const c of cliffTargets) {
+      if (budget <= 0) break;
+      const monthsLeft = monthsUntilPromoEnd(c);
+      const needThisMonth = Math.max(0, remaining[c.id] / monthsLeft - 0);
+      const cliffPay = Math.min(budget, needThisMonth, remaining[c.id]);
+      if (cliffPay > 0.005) {
+        pay[c.id] += cliffPay;
+        remaining[c.id] -= cliffPay;
+        budget -= cliffPay;
+        reasons[c.id] = `on pace to clear before the promo ends (${monthsLeft} month${monthsLeft === 1 ? '' : 's'} left)`;
+      }
+    }
+
+    // Tier 4: whatever is left goes highest-effective-APR-first.
+    order = getStrategyOrder(active, strategy);
+    for (const c of order) {
+      if (budget <= 0) break;
+      const extra = Math.min(budget, remaining[c.id]);
+      if (extra > 0.005 && !reasons[c.id]) reasons[c.id] = 'highest effective APR with what\'s left';
+      pay[c.id] += extra;
+      remaining[c.id] -= extra;
+      budget -= extra;
+    }
+    // Show rows in payment-size order so the plan reads naturally.
+    order = [...active].sort((a, b) => pay[b.id] - pay[a.id]);
+  } else {
+    order = getStrategyOrder(active, strategy);
+    for (const c of order) {
+      if (budget <= 0) break;
+      const extra = Math.min(budget, remaining[c.id]);
+      pay[c.id] += extra;
+      remaining[c.id] -= extra;
+      budget -= extra;
+    }
   }
 
   const plan = order.map(c => ({
     id: c.id, name: c.name, color: c.color, apr: c.apr,
     amount: Math.round(pay[c.id] * 100) / 100,
-    payoff: remaining[c.id] <= 0.005
+    payoff: remaining[c.id] <= 0.005,
+    reason: reasons[c.id] || null
   }));
 
   return { plan, leftover: Math.round(budget * 100) / 100 };
@@ -2127,7 +2192,7 @@ function renderPlanner(amount) {
           <span class="prio">${i + 1}</span>
           <div>
             <div class="pname">${esc(p.name)}</div>
-            <div class="pnote">${p.apr}% APR${p.payoff ? ' · pays off this card' : ''}</div>
+            <div class="pnote">${p.apr}% APR${p.payoff ? ' · pays off this card' : ''}${p.reason ? ' · ' + p.reason : ''}</div>
           </div>
         </div>
         <div class="planner-row-right">
@@ -2254,11 +2319,14 @@ function simulateMinimumOnly() {
 function simulateAvalanche(monthlyBudget, strategy) {
   const balances = {};
   cards.forEach(c => { balances[c.id] = c.balance; });
-  const order = getStrategyOrder(cards, strategy);
+  let order = getStrategyOrder(cards, strategy);
   let totalInterest = 0;
   let months = 0;
   while (Object.values(balances).some(b => b > 0.01) && months < 600) {
     months++;
+    if (strategy === 'statement') {
+      order = [...cards].sort((a, b) => getEffectiveApr(b, months) - getEffectiveApr(a, months) || b.apr - a.apr);
+    }
     cards.forEach(c => {
       if (balances[c.id] > 0) {
         const interest = balances[c.id] * (getEffectiveApr(c, months) / 100 / 12);
@@ -2314,9 +2382,12 @@ function computeRequiredMonthlyPayment(targetMonths, strategy) {
 function simulateUpToMonth(monthlyBudget, monthCount, strategy) {
   const balances = {};
   cards.forEach(c => { balances[c.id] = c.balance; });
-  const order = getStrategyOrder(cards, strategy);
+  let order = getStrategyOrder(cards, strategy);
   const payoffMonth = {};
   for (let month = 1; month <= monthCount; month++) {
+    if (strategy === 'statement') {
+      order = [...cards].sort((a, b) => getEffectiveApr(b, month) - getEffectiveApr(a, month) || b.apr - a.apr);
+    }
     order.forEach(c => {
       if (balances[c.id] > 0) {
         const interest = balances[c.id] * (getEffectiveApr(c, month) / 100 / 12);
