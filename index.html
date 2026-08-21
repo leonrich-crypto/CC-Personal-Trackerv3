@@ -497,6 +497,7 @@
       <button class="primary" id="planner-btn">Calculate</button>
       <button id="planner-reset-btn">Reset</button>
     </div>
+    <p style="margin:-4px 0 0"><button class="reset-link" id="planner-use-setaside-btn" style="font-size:12px;display:none"></button></p>
     <div class="chart-box" id="planner-chart-box" style="height:200px;display:none;margin-top:14px;margin-bottom:0">
       <canvas id="planner-chart" role="img" aria-label="Bar chart of recommended payment amount per card"></canvas>
     </div>
@@ -532,6 +533,8 @@
       <select id="reserve-card-select" style="flex:1;min-width:170px">
         <option value="">General — not tied to a card</option>
       </select>
+      <input id="reserve-bank" type="text" list="reserve-bank-options" placeholder="Which bank/account? (optional)" style="flex:1;min-width:170px" />
+      <datalist id="reserve-bank-options"></datalist>
     </div>
     <div class="row">
       <div class="money-input-wrap"><input id="reserve-amount" type="number" step="0.01" placeholder="Amount" /></div>
@@ -547,8 +550,11 @@
         <p class="value" id="reserve-total" style="font-size:26px">$0.00</p>
       </div>
     </div>
-    <div id="affordability-box"></div>
+    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;font-weight:600">Which card has money set aside</p>
     <div id="reserve-per-card-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <p id="reserve-per-bank-label" style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;font-weight:600;display:none">Which bank has the money</p>
+    <div id="reserve-per-bank-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div id="affordability-box"></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);font-weight:500" id="reserve-chart-legend"></div>
     <div class="chart-box" style="height:200px;margin-bottom:0">
       <canvas id="reserve-chart" role="img" aria-label="Line chart of cumulative money set aside per card over time"></canvas>
@@ -2155,6 +2161,26 @@ function calculateAllocation(amount, strategy) {
     budget -= m;
   });
 
+  // Respect money you've specifically set aside for a card — apply that
+  // before the strategy order gets any say in where the rest goes.
+  const earmarked = {};
+  reserves.filter(r => !r.deleted && r.cardId).forEach(r => {
+    earmarked[r.cardId] = (earmarked[r.cardId] || 0) + r.amount;
+  });
+  const earmarkApplied = {};
+  active.forEach(c => {
+    const tagged = earmarked[c.id];
+    if (tagged > 0.005 && budget > 0) {
+      const extra = Math.min(tagged, remaining[c.id], budget);
+      if (extra > 0.005) {
+        pay[c.id] += extra;
+        remaining[c.id] -= extra;
+        budget -= extra;
+        earmarkApplied[c.id] = extra;
+      }
+    }
+  });
+
   const order = getStrategyOrder(active, strategy);
 
   for (const c of order) {
@@ -2168,7 +2194,8 @@ function calculateAllocation(amount, strategy) {
   const plan = order.map(c => ({
     id: c.id, name: c.name, color: c.color, apr: c.apr,
     amount: Math.round(pay[c.id] * 100) / 100,
-    payoff: remaining[c.id] <= 0.005
+    payoff: remaining[c.id] <= 0.005,
+    earmarked: earmarkApplied[c.id] ? Math.round(earmarkApplied[c.id] * 100) / 100 : 0
   }));
 
   return { plan, leftover: Math.round(budget * 100) / 100 };
@@ -2354,6 +2381,13 @@ document.getElementById('planner-reset-btn').addEventListener('click', () => {
   document.getElementById('planner-amount').value = '';
   document.getElementById('planner-result').innerHTML = '';
   document.getElementById('planner-chart-box').style.display = 'none';
+});
+
+document.getElementById('planner-use-setaside-btn').addEventListener('click', () => {
+  const total = reserves.filter(r => !r.deleted).reduce((s, r) => s + r.amount, 0);
+  if (total <= 0.005) return;
+  document.getElementById('planner-amount').value = (Math.round(total * 100) / 100).toString();
+  document.getElementById('planner-btn').click();
 });
 
 function simulateMinimumOnly() {
@@ -3007,6 +3041,16 @@ function renderReserves() {
   totalEl.textContent = fmt(total);
   totalEl.style.color = total < 0 ? 'var(--danger)' : 'var(--success)';
 
+  const plannerSetAsideBtn = document.getElementById('planner-use-setaside-btn');
+  if (plannerSetAsideBtn) {
+    if (total > 0.005) {
+      plannerSetAsideBtn.style.display = 'inline';
+      plannerSetAsideBtn.textContent = `Use my set-aside total (${fmt(total)})`;
+    } else {
+      plannerSetAsideBtn.style.display = 'none';
+    }
+  }
+
   const cardSelect = document.getElementById('reserve-card-select');
   if (cardSelect) {
     const currentVal = cardSelect.value;
@@ -3026,21 +3070,54 @@ function renderReserves() {
         generalTotal += r.amount;
       }
     });
-    const cardRows = cards
-      .filter(c => byCard[c.id] !== undefined && Math.abs(byCard[c.id]) > 0.005)
-      .map(c => `
-        <div class="reward-row">
+    const cardRows = cards.map(c => {
+      const amt = byCard[c.id] || 0;
+      const hasMoney = Math.abs(amt) > 0.005;
+      return `
+        <div class="reward-row" style="${hasMoney ? '' : 'opacity:0.5'}">
           <span class="rw-name" style="color:${c.color}">${esc(c.name)}</span>
-          <span class="rw-amt" style="color:${byCard[c.id] < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(byCard[c.id])}</span>
+          <span class="rw-amt" style="color:${!hasMoney ? 'var(--text-muted)' : amt < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(amt)}</span>
         </div>
-      `).join('');
-    const generalRow = Math.abs(generalTotal) > 0.005 ? `
-        <div class="reward-row">
+      `;
+    }).join('');
+    const generalRow = `
+        <div class="reward-row" style="${Math.abs(generalTotal) > 0.005 ? '' : 'opacity:0.5'}">
           <span class="rw-name" style="color:var(--text-muted)">General (not tied to a card)</span>
-          <span class="rw-amt" style="color:${generalTotal < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(generalTotal)}</span>
+          <span class="rw-amt" style="color:${Math.abs(generalTotal) <= 0.005 ? 'var(--text-muted)' : generalTotal < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(generalTotal)}</span>
         </div>
-      ` : '';
+      `;
     perCardBox.innerHTML = cardRows + generalRow;
+  }
+
+  const perBankBox = document.getElementById('reserve-per-bank-list');
+  const perBankLabel = document.getElementById('reserve-per-bank-label');
+  if (perBankBox) {
+    const byBank = {};
+    nonDeletedReserves.forEach(r => {
+      if (r.bank) byBank[r.bank] = (byBank[r.bank] || 0) + r.amount;
+    });
+    const bankNames = Object.keys(byBank).sort();
+    if (bankNames.length > 0) {
+      perBankLabel.style.display = 'block';
+      perBankBox.innerHTML = bankNames.map(name => {
+        const amt = byBank[name];
+        const hasMoney = Math.abs(amt) > 0.005;
+        return `
+          <div class="reward-row" style="${hasMoney ? '' : 'opacity:0.5'}">
+            <span class="rw-name">${esc(name)}</span>
+            <span class="rw-amt" style="color:${!hasMoney ? 'var(--text-muted)' : amt < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(amt)}</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      perBankLabel.style.display = 'none';
+      perBankBox.innerHTML = '';
+    }
+
+    const bankDatalist = document.getElementById('reserve-bank-options');
+    if (bankDatalist) {
+      bankDatalist.innerHTML = bankNames.map(name => `<option value="${esc(name)}"></option>`).join('');
+    }
   }
   renderAffordability();
 
@@ -3261,7 +3338,8 @@ function renderReserveHistory() {
       const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
       const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
       const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
-      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+      const bankTag = r.bank ? `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>` : '';
+      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
       list.appendChild(row);
     });
     bindDeleteButtons();
@@ -3299,7 +3377,8 @@ function renderReserveHistory() {
       const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
       const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
       const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
-      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+      const bankTag = r.bank ? `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>` : '';
+      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
       groupDiv.appendChild(row);
     });
     list.appendChild(groupDiv);
@@ -3326,9 +3405,12 @@ document.getElementById('reserve-btn').addEventListener('click', () => {
   const cardId = document.getElementById('reserve-card-select').value || null;
   const noteInput = document.getElementById('reserve-note');
   const note = noteInput.value.trim() || 'Set aside';
-  reserves.push({ id: Date.now() + Math.random(), amount: val, date: new Date().toISOString(), note, cardId });
+  const bankInput = document.getElementById('reserve-bank');
+  const bank = bankInput.value.trim() || null;
+  reserves.push({ id: Date.now() + Math.random(), amount: val, date: new Date().toISOString(), note, cardId, bank });
   input.value = '';
   noteInput.value = '';
+  bankInput.value = '';
   saveData();
   renderReserves();
 });
@@ -3340,9 +3422,12 @@ document.getElementById('reserve-remove-btn').addEventListener('click', () => {
   const cardId = document.getElementById('reserve-card-select').value || null;
   const noteInput = document.getElementById('reserve-note');
   const note = noteInput.value.trim() || 'Manually removed';
-  reserves.push({ id: Date.now() + Math.random(), amount: -val, date: new Date().toISOString(), note, cardId });
+  const bankInput = document.getElementById('reserve-bank');
+  const bank = bankInput.value.trim() || null;
+  reserves.push({ id: Date.now() + Math.random(), amount: -val, date: new Date().toISOString(), note, cardId, bank });
   input.value = '';
   noteInput.value = '';
+  bankInput.value = '';
   saveData();
   renderReserves();
 });
