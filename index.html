@@ -29,6 +29,7 @@
     --accent-bright: #7FBFFF;
     --success: #4ADE80;
     --danger: #FF6B6B;
+    --warning: #F5A524;
     --radius: 10px;
   }
   * { box-sizing: border-box; }
@@ -2193,12 +2194,101 @@ function calculateAllocation(amount, strategy) {
 
   const plan = order.map(c => ({
     id: c.id, name: c.name, color: c.color, apr: c.apr,
+    effectiveApr: getEffectiveApr(c, 0),
+    promoUntil: isInPromoPeriod(c) ? c.promoUntil : null,
     amount: Math.round(pay[c.id] * 100) / 100,
     payoff: remaining[c.id] <= 0.005,
     earmarked: earmarkApplied[c.id] ? Math.round(earmarkApplied[c.id] * 100) / 100 : 0
   }));
 
   return { plan, leftover: Math.round(budget * 100) / 100 };
+}
+
+// Normalizes a bank/account name for matching purposes only (trims,
+// collapses whitespace, lowercases) so "Chase Checking" and "chase checking "
+// are treated as the same account. Display text always uses the original
+// casing of whichever entry was seen first.
+function normalizeBankKey(bank) {
+  return (bank || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// Break the set-aside cash into per-account "buckets" so we can figure out
+// which bank/account each dollar of a planned payment should come from.
+// Each bucket tracks a bank name and, optionally, the card it was earmarked for.
+function buildFundingBuckets() {
+  const buckets = [];
+  const index = {};
+  reserves.filter(r => !r.deleted).forEach(r => {
+    const rawBank = (r.bank || '').trim().replace(/\s+/g, ' ');
+    const bankKey = normalizeBankKey(rawBank) || '\u0000none';
+    const displayBank = rawBank || 'Not tied to an account';
+    const cardId = r.cardId || null;
+    const key = bankKey + '|' + (cardId || '');
+    if (!(key in index)) {
+      index[key] = buckets.length;
+      buckets.push({ bank: displayBank, cardId, amount: 0 });
+    }
+    buckets[index[key]].amount += r.amount;
+  });
+  buckets.forEach(b => { if (b.amount < 0.005) b.amount = 0; });
+  return buckets;
+}
+
+// For each card in a payment plan, figure out which account(s) the money
+// should come from: this card's own earmarked cash first, then general
+// (untagged) set-aside cash, then — as a last resort — cash earmarked for
+// a different card (since the strategy order above may have already
+// redirected it here). Whatever's left uncovered isn't sitting in any
+// account yet and would need to come from new money.
+// Each funding entry keeps the sourceCardId of the bucket it came from
+// (not necessarily this card's id — see the fallback case above) so that
+// actually applying the payment can reverse the exact reserve entries used.
+function allocateFunding(plan) {
+  const buckets = buildFundingBuckets();
+  return plan.map(p => {
+    let need = p.amount;
+    const funding = [];
+    const takeFrom = (predicate) => {
+      buckets.filter(predicate).forEach(b => {
+        if (need <= 0.005 || b.amount <= 0.005) return;
+        const use = Math.min(b.amount, need);
+        b.amount = Math.round((b.amount - use) * 100) / 100;
+        need = Math.round((need - use) * 100) / 100;
+        funding.push({ bank: b.bank, sourceCardId: b.cardId, amount: Math.round(use * 100) / 100 });
+      });
+    };
+    takeFrom(b => b.cardId === p.id);
+    takeFrom(b => b.cardId === null);
+    takeFrom(b => b.cardId && b.cardId !== p.id);
+    return { ...p, funding, unfunded: Math.round(Math.max(0, need) * 100) / 100 };
+  });
+}
+
+// Current set-aside total per account, keyed by normalized bank name, along
+// with the display casing to use (first one seen). Used to show what's left
+// in each account after a plan is applied.
+function reserveBankTotals() {
+  const totals = {};
+  const display = {};
+  reserves.filter(r => !r.deleted).forEach(r => {
+    const raw = (r.bank || '').trim().replace(/\s+/g, ' ') || 'Not tied to an account';
+    const key = normalizeBankKey(raw) || '\u0000none';
+    if (!(key in display)) display[key] = raw;
+    totals[key] = (totals[key] || 0) + r.amount;
+  });
+  return { totals, display };
+}
+
+// Groups a plan row's funding entries by bank only (collapsing the
+// sourceCardId detail) purely for display in the planner list.
+function fundingByBank(funding) {
+  const byBank = {};
+  const order = [];
+  (funding || []).forEach(f => {
+    if (!(f.bank in byBank)) { byBank[f.bank] = 0; order.push(f.bank); }
+    byBank[f.bank] = Math.round((byBank[f.bank] + f.amount) * 100) / 100;
+  });
+  return order.map(bank => ({ bank, amount: byBank[bank] }));
 }
 
 let plannerChart = null;
@@ -2220,7 +2310,9 @@ function renderPlanner(amount) {
     return;
   }
 
-  const payable = result.plan.filter(p => p.amount > 0);
+  const hasReserves = reserves.some(r => !r.deleted);
+  const funded = hasReserves ? allocateFunding(result.plan) : result.plan;
+  const payable = funded.filter(p => p.amount > 0);
 
   chartBox.style.display = (payable.length && window.Chart) ? 'block' : 'none';
   if (payable.length && window.Chart) {
@@ -2277,18 +2369,34 @@ function renderPlanner(amount) {
 
   let html = '';
   payable.forEach((p, i) => {
+    let fundingLine = '';
+    if (hasReserves) {
+      const grouped = fundingByBank(p.funding);
+      const parts = grouped.map(f => `${esc(f.bank)} ${fmt(f.amount)}`);
+      if (p.unfunded > 0.005) {
+        parts.push(`<span style="color:var(--warning);font-weight:600">${fmt(p.unfunded)} not yet set aside</span>`);
+      }
+      if (parts.length) {
+        fundingLine = `<div class="pnote" style="margin-top:3px;color:var(--text-muted)">💰 ${parts.join(' + ')}</div>`;
+      }
+    }
+    const aprLabel = p.promoUntil
+      ? `<span style="color:var(--success);font-weight:600">${p.effectiveApr}% promo APR</span> (${p.apr}% regular, until ${new Date(p.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
+      : `${p.apr}% APR`;
+    const fundingAttr = esc(JSON.stringify(p.funding || []));
     html += `
       <div class="planner-row" style="--card-color:${p.color}">
         <div class="planner-row-main">
           <span class="prio">${i + 1}</span>
           <div>
             <div class="pname">${esc(p.name)}</div>
-            <div class="pnote">${p.apr}% APR${p.payoff ? ' · pays off this card' : ''}</div>
+            <div class="pnote">${aprLabel}${p.payoff ? ' · pays off this card' : ''}</div>
+            ${fundingLine}
           </div>
         </div>
         <div class="planner-row-right">
           <div class="pamt">${fmt(p.amount)}</div>
-          <button class="apply-pay-btn" data-card-id="${p.id}" data-amount="${p.amount}">Pay this</button>
+          <button class="apply-pay-btn" data-card-id="${p.id}" data-amount="${p.amount}" data-funding="${fundingAttr}">Pay this</button>
         </div>
       </div>
     `;
@@ -2296,6 +2404,24 @@ function renderPlanner(amount) {
   html += `<div class="planner-total"><span>Total allocated</span><span>${fmt(amount - result.leftover)}</span></div>`;
   if (result.leftover > 0.005) {
     html += `<p class="pnote" style="margin-top:6px">All cards paid off, ${fmt(result.leftover)} left over.</p>`;
+  }
+  if (hasReserves) {
+    const { totals, display } = reserveBankTotals();
+    const consumed = {};
+    payable.forEach(p => (p.funding || []).forEach(f => {
+      const key = normalizeBankKey(f.bank) || '\u0000none';
+      consumed[key] = (consumed[key] || 0) + f.amount;
+    }));
+    const leftoverParts = Object.keys(totals)
+      .filter(key => Math.abs(totals[key]) > 0.005 || consumed[key])
+      .sort((a, b) => display[a].localeCompare(display[b]))
+      .map(key => {
+        const remaining = Math.round(((totals[key] || 0) - (consumed[key] || 0)) * 100) / 100;
+        return `${esc(display[key])} ${fmt(remaining)}`;
+      });
+    if (leftoverParts.length) {
+      html += `<p class="pnote" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">After this plan, set-aside cash remaining: ${leftoverParts.join(' &nbsp;·&nbsp; ')}</p>`;
+    }
   }
   resultBox.innerHTML = html;
 
@@ -2306,7 +2432,9 @@ function renderPlanner(amount) {
       const entryId = btn.getAttribute('data-entry-id');
 
       if (!entryId) {
-        const newEntryId = applyPlannerPayment(cardId, payAmount);
+        let funding = [];
+        try { funding = JSON.parse(btn.getAttribute('data-funding') || '[]'); } catch (e) { funding = []; }
+        const newEntryId = applyPlannerPayment(cardId, payAmount, funding);
         if (newEntryId) {
           btn.setAttribute('data-entry-id', newEntryId);
           btn.textContent = 'Unpay';
@@ -2329,7 +2457,19 @@ function unpayEntry(entryId) {
   if (card) {
     if (entry.type === 'payment') {
       card.balance += entry.amount;
-      reserves.push({ id: Date.now() + Math.random(), amount: entry.amount, date: new Date().toISOString(), note: `Undo: returned to reserve (${card.name})` });
+      if (entry.reserveEntryIds) {
+        // Payment used the per-account funding breakdown — reverse the exact
+        // reserve entries it spent instead of adding a new lump-sum one, so
+        // per-card and per-bank totals land back where they started.
+        entry.reserveEntryIds.forEach(id => {
+          const r = reserves.find(res => res.id === id);
+          if (r) r.deleted = true;
+        });
+      } else {
+        // Legacy entry from before per-account funding tracking — it always
+        // pulled from the reserve as one lump sum, so restore it the same way.
+        reserves.push({ id: Date.now() + Math.random(), amount: entry.amount, date: new Date().toISOString(), note: `Undo: returned to reserve (${card.name})` });
+      }
     } else {
       card.balance = Math.max(0, card.balance - entry.amount);
     }
@@ -2343,7 +2483,7 @@ function unpayEntry(entryId) {
   renderReserves();
 }
 
-function applyPlannerPayment(cardId, amount) {
+function applyPlannerPayment(cardId, amount, funding) {
   const card = cards.find(c => c.id === cardId);
   if (!card || amount <= 0) return null;
   const entryId = Date.now() + Math.random();
@@ -2351,11 +2491,21 @@ function applyPlannerPayment(cardId, amount) {
   if (amount >= (card.min || 0) && (card.min || 0) > 0) {
     markCardCycleHandled(card);
   }
+  const usingReserves = reserves.some(r => !r.deleted);
+  let reserveEntryIds;
+  if (usingReserves) {
+    // Spend exactly the accounts identified by the funding breakdown. If any
+    // portion of the payment wasn't covered by set-aside cash, that portion
+    // simply isn't recorded against the reserve — it was never sitting there.
+    reserveEntryIds = spendFromReserveBuckets(funding, `Paid toward ${card.name}`);
+  } else {
+    spendFromReserve(amount, `Paid toward ${card.name}`);
+  }
   history.push({
     id: entryId, cardId, type: 'payment', amount,
-    note: 'Applied from smart payment plan', date: new Date().toISOString()
+    note: 'Applied from smart payment plan', date: new Date().toISOString(),
+    reserveEntryIds
   });
-  spendFromReserve(amount, `Paid toward ${card.name}`);
   saveData();
   render();
   renderReserves();
@@ -2798,6 +2948,35 @@ function spendFromReserve(amount, note) {
   reserves.push({ id: Date.now() + Math.random(), amount: -amount, date: new Date().toISOString(), note });
 }
 
+// Spends exactly the accounts/amounts identified by allocateFunding, instead
+// of one lump sum, so per-card and per-bank set-aside totals stay accurate.
+// Returns the ids of the reserve entries created, so the payment can be
+// undone precisely later.
+function spendFromReserveBuckets(funding, note) {
+  const ids = [];
+  // Tag every entry from this payment with the same batchId, purely so the
+  // set-aside history can display them as one combined row instead of
+  // several near-identical lines for a single "Pay this" click.
+  const batchId = (funding && funding.length > 1)
+    ? 'b' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+    : null;
+  (funding || []).forEach(f => {
+    if (!f || f.amount <= 0.005) return;
+    const id = Date.now() + Math.random();
+    reserves.push({
+      id,
+      amount: -f.amount,
+      date: new Date().toISOString(),
+      cardId: f.sourceCardId || null,
+      bank: (f.bank && f.bank !== 'Not tied to an account') ? f.bank : '',
+      note,
+      batchId
+    });
+    ids.push(id);
+  });
+  return ids;
+}
+
 let affordDismissedSignature = null;
 
 function renderAffordability() {
@@ -3092,19 +3271,26 @@ function renderReserves() {
   const perBankBox = document.getElementById('reserve-per-bank-list');
   const perBankLabel = document.getElementById('reserve-per-bank-label');
   if (perBankBox) {
+    // Group by a normalized key so "Chase Checking" and "chase checking "
+    // land in the same row, while still displaying the first-seen casing.
     const byBank = {};
+    const bankDisplay = {};
     nonDeletedReserves.forEach(r => {
-      if (r.bank) byBank[r.bank] = (byBank[r.bank] || 0) + r.amount;
+      const rawBank = (r.bank || '').trim().replace(/\s+/g, ' ');
+      if (!rawBank) return;
+      const key = normalizeBankKey(rawBank);
+      if (!(key in bankDisplay)) bankDisplay[key] = rawBank;
+      byBank[key] = (byBank[key] || 0) + r.amount;
     });
-    const bankNames = Object.keys(byBank).sort();
-    if (bankNames.length > 0) {
+    const bankKeys = Object.keys(byBank).sort((a, b) => bankDisplay[a].localeCompare(bankDisplay[b]));
+    if (bankKeys.length > 0) {
       perBankLabel.style.display = 'block';
-      perBankBox.innerHTML = bankNames.map(name => {
-        const amt = byBank[name];
+      perBankBox.innerHTML = bankKeys.map(key => {
+        const amt = byBank[key];
         const hasMoney = Math.abs(amt) > 0.005;
         return `
           <div class="reward-row" style="${hasMoney ? '' : 'opacity:0.5'}">
-            <span class="rw-name">${esc(name)}</span>
+            <span class="rw-name">${esc(bankDisplay[key])}</span>
             <span class="rw-amt" style="color:${!hasMoney ? 'var(--text-muted)' : amt < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(amt)}</span>
           </div>
         `;
@@ -3116,7 +3302,7 @@ function renderReserves() {
 
     const bankDatalist = document.getElementById('reserve-bank-options');
     if (bankDatalist) {
-      bankDatalist.innerHTML = bankNames.map(name => `<option value="${esc(name)}"></option>`).join('');
+      bankDatalist.innerHTML = bankKeys.map(key => `<option value="${esc(bankDisplay[key])}"></option>`).join('');
     }
   }
   renderAffordability();
@@ -3285,6 +3471,40 @@ function getGroupLabel(key, mode) {
   return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
+// A single planner payment can now spend from several accounts at once
+// (see spendFromReserveBuckets), which creates several reserve entries that
+// share a batchId. Combine those back into one synthetic row for display —
+// each underlying entry still exists separately for accurate undo/delete.
+function combineByBatch(entries) {
+  const batches = {};
+  const order = [];
+  const result = [];
+  entries.forEach(r => {
+    if (r.batchId) {
+      if (!(r.batchId in batches)) {
+        batches[r.batchId] = [];
+        order.push(r.batchId);
+      }
+      batches[r.batchId].push(r);
+    } else {
+      result.push(r);
+    }
+  });
+  order.forEach(bid => {
+    const group = batches[bid];
+    result.push({
+      id: group.map(r => r.id).join(','),
+      batchIds: group.map(r => r.id),
+      amount: Math.round(group.reduce((s, r) => s + r.amount, 0) * 100) / 100,
+      date: group[0].date,
+      note: group[0].note,
+      cardId: null,
+      bankBreakdown: group.filter(r => r.bank).map(r => ({ bank: r.bank, amount: r.amount }))
+    });
+  });
+  return result;
+}
+
 function renderReserveHistory() {
   const list = document.getElementById('reserve-history-list');
   if (!list) return;
@@ -3297,7 +3517,7 @@ function renderReserveHistory() {
 
   const modeSelect = document.getElementById('reserve-view-mode');
   const mode = modeSelect ? modeSelect.value : 'month';
-  const visible = reserves.filter(r => !r.deleted && !r.archived);
+  const visible = combineByBatch(reserves.filter(r => !r.deleted && !r.archived));
   if (visible.length === 0) {
     list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No set-aside activity yet.</p>';
     return;
@@ -3308,7 +3528,8 @@ function renderReserveHistory() {
     list.querySelectorAll('.hist-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.dataset.confirming === 'true') {
-          deleteReserveEntry(parseFloat(btn.getAttribute('data-reserve-id')));
+          const ids = btn.getAttribute('data-reserve-id').split(',').map(parseFloat);
+          deleteReserveEntries(ids);
           return;
         }
         btn.dataset.confirming = 'true';
@@ -3328,18 +3549,27 @@ function renderReserveHistory() {
     });
   }
 
+  function rowHtml(r) {
+    const isPositive = r.amount >= 0;
+    const sign = isPositive ? '+' : '-';
+    const cls = isPositive ? 'neg' : 'pos';
+    const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
+    const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
+    const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
+    let bankTag = '';
+    if (r.bankBreakdown && r.bankBreakdown.length) {
+      bankTag = `<span style="color:var(--text-muted);font-size:11.5px"> (${r.bankBreakdown.map(b => `${esc(b.bank)} ${fmt(Math.abs(b.amount))}`).join(' + ')})</span>`;
+    } else if (r.bank) {
+      bankTag = `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>`;
+    }
+    return `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+  }
+
   if (mode === 'all') {
     sorted.slice(0, 20).forEach(r => {
       const row = document.createElement('div');
       row.className = 'hist-row';
-      const isPositive = r.amount >= 0;
-      const sign = isPositive ? '+' : '-';
-      const cls = isPositive ? 'neg' : 'pos';
-      const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
-      const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
-      const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
-      const bankTag = r.bank ? `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>` : '';
-      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+      row.innerHTML = rowHtml(r);
       list.appendChild(row);
     });
     bindDeleteButtons();
@@ -3371,14 +3601,7 @@ function renderReserveHistory() {
     entries.forEach(r => {
       const row = document.createElement('div');
       row.className = 'hist-row';
-      const isPositive = r.amount >= 0;
-      const sign = isPositive ? '+' : '-';
-      const cls = isPositive ? 'neg' : 'pos';
-      const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
-      const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
-      const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
-      const bankTag = r.bank ? `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>` : '';
-      row.innerHTML = `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+      row.innerHTML = rowHtml(r);
       groupDiv.appendChild(row);
     });
     list.appendChild(groupDiv);
@@ -3390,6 +3613,13 @@ function deleteReserveEntry(id) {
   const entry = reserves.find(r => r.id === id);
   if (!entry) return;
   entry.deleted = true;
+  saveData();
+  renderReserves();
+}
+
+function deleteReserveEntries(ids) {
+  const idSet = new Set(ids);
+  reserves.forEach(r => { if (idSet.has(r.id)) r.deleted = true; });
   saveData();
   renderReserves();
 }
