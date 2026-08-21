@@ -2204,6 +2204,11 @@ function allocateBalancedZeroApr(zeroCards, remaining, pay, budget, monthsFromNo
   return budget;
 }
 
+function getStatementTarget(card) {
+  const statement = Math.max(0, Math.min(Number(card.statementBalance) || 0, Number(card.balance) || 0));
+  return statement;
+}
+
 function calculateAllocation(amount, strategy) {
   const active = cards.filter(c => c.balance > 0.005);
   if (active.length === 0) return { plan: [], leftover: amount, error: 'no-debt' };
@@ -2211,19 +2216,27 @@ function calculateAllocation(amount, strategy) {
   const totalMins = active.reduce((s, c) => s + Math.min(c.min || 0, c.balance), 0);
   if (amount < totalMins) return { plan: [], leftover: 0, error: 'below-min', totalMins };
 
-  const remaining = {};
-  const pay = {};
-  active.forEach(c => { remaining[c.id] = c.balance; pay[c.id] = 0; });
+  const remaining = {}, pay = {}, minimumPaid = {}, statementExtra = {}, strategyExtra = {};
+  active.forEach(c => {
+    remaining[c.id] = c.balance;
+    pay[c.id] = 0;
+    minimumPaid[c.id] = 0;
+    statementExtra[c.id] = 0;
+    strategyExtra[c.id] = 0;
+  });
 
   let budget = amount;
+
+  // Layer 1: protect every account by covering its required minimum.
   active.forEach(c => {
     const m = Math.min(c.min || 0, remaining[c.id]);
     pay[c.id] += m;
+    minimumPaid[c.id] += m;
     remaining[c.id] -= m;
     budget -= m;
   });
 
-  // Honor specifically earmarked money before general strategy allocation.
+  // Layer 2: honor money the user explicitly reserved for a specific card.
   const earmarked = {};
   reserves.filter(r => !r.deleted && r.cardId).forEach(r => {
     earmarked[r.cardId] = (earmarked[r.cardId] || 0) + r.amount;
@@ -2231,7 +2244,7 @@ function calculateAllocation(amount, strategy) {
   const earmarkApplied = {};
   active.forEach(c => {
     const tagged = earmarked[c.id];
-    if (tagged > 0.005 && budget > 0) {
+    if (tagged > 0.005 && budget > 0.005) {
       const extra = Math.min(tagged, remaining[c.id], budget);
       if (extra > 0.005) {
         pay[c.id] += extra;
@@ -2242,30 +2255,67 @@ function calculateAllocation(amount, strategy) {
     }
   });
 
-  // First attack cards currently charging interest according to the selected strategy.
+  // Layer 3: use statement balances as an urgency checkpoint for cards charging interest.
+  // We do NOT automatically ignore the newer balance; if enough budget exists,
+  // Layer 4 continues through the full current balance because that stops interest
+  // on the entire account and can eliminate a card completely.
   const interestCards = active.filter(c => getEffectiveApr(c, 0) > 0.005);
   const interestOrder = getStrategyOrder(interestCards, strategy);
   for (const c of interestOrder) {
     if (budget <= 0.005) break;
-    const extra = Math.min(budget, remaining[c.id]);
-    pay[c.id] += extra;
-    remaining[c.id] -= extra;
-    budget -= extra;
+    const statementTarget = getStatementTarget(c);
+    const neededForStatement = Math.max(0, statementTarget - pay[c.id]);
+    const extra = Math.min(neededForStatement, remaining[c.id], budget);
+    if (extra > 0.005) {
+      pay[c.id] += extra;
+      statementExtra[c.id] += extra;
+      remaining[c.id] -= extra;
+      budget -= extra;
+    }
   }
 
-  // Then treat active 0% promo cards as a shared pool instead of feeding one card all leftovers.
+  // Layer 4: after statement obligations are covered, attack remaining interest-bearing
+  // current balances using the selected strategy. This is where the newer balance is
+  // considered as optional-but-optimal payoff money.
+  for (const c of interestOrder) {
+    if (budget <= 0.005) break;
+    const extra = Math.min(budget, remaining[c.id]);
+    if (extra > 0.005) {
+      pay[c.id] += extra;
+      strategyExtra[c.id] += extra;
+      remaining[c.id] -= extra;
+      budget -= extra;
+    }
+  }
+
+  // Layer 5: active 0% promo cards share the remaining pool instead of one card
+  // absorbing everything. Promo urgency gives the sooner-expiring offer a modest boost.
   const zeroCards = active.filter(c => getEffectiveApr(c, 0) <= 0.005 && remaining[c.id] > 0.005);
+  const beforeZero = {};
+  zeroCards.forEach(c => { beforeZero[c.id] = remaining[c.id]; });
   budget = allocateBalancedZeroApr(zeroCards, remaining, pay, budget, 0);
+  zeroCards.forEach(c => {
+    strategyExtra[c.id] += Math.max(0, beforeZero[c.id] - remaining[c.id]);
+  });
 
   const order = [...interestOrder, ...getStrategyOrder(zeroCards, strategy)];
-  const plan = order.map(c => ({
-    id: c.id, name: c.name, color: c.color, apr: c.apr,
-    effectiveApr: getEffectiveApr(c, 0),
-    promoUntil: isInPromoPeriod(c) ? c.promoUntil : null,
-    amount: Math.round(pay[c.id] * 100) / 100,
-    payoff: remaining[c.id] <= 0.005,
-    earmarked: earmarkApplied[c.id] ? Math.round(earmarkApplied[c.id] * 100) / 100 : 0
-  }));
+  const plan = order.map(c => {
+    const statementBalance = getStatementTarget(c);
+    const newerBalance = Math.max(0, c.balance - statementBalance);
+    return {
+      id: c.id, name: c.name, color: c.color, apr: c.apr,
+      effectiveApr: getEffectiveApr(c, 0),
+      promoUntil: isInPromoPeriod(c) ? c.promoUntil : null,
+      amount: Math.round(pay[c.id] * 100) / 100,
+      payoff: remaining[c.id] <= 0.005,
+      earmarked: earmarkApplied[c.id] ? Math.round(earmarkApplied[c.id] * 100) / 100 : 0,
+      minimumPaid: Math.round(minimumPaid[c.id] * 100) / 100,
+      statementBalance: Math.round(statementBalance * 100) / 100,
+      statementExtra: Math.round(statementExtra[c.id] * 100) / 100,
+      newerBalance: Math.round(newerBalance * 100) / 100,
+      strategyExtra: Math.round(strategyExtra[c.id] * 100) / 100
+    };
+  });
 
   return { plan, leftover: Math.round(budget * 100) / 100 };
 }
