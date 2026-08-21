@@ -107,6 +107,12 @@
   .card-col .due-edit-row input[type=date] { flex: 1; font-size: 11.5px; padding: 4px 6px; min-width: 0; }
   .card-col .due-edit-row button { font-size: 11px; padding: 4px 8px; white-space: nowrap; }
   .form-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 24px; }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 22px; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-size: 13.5px; font-weight: 600; padding: 10px 14px; cursor: pointer; white-space: nowrap; font-family: inherit; transition: color 0.15s ease, border-color 0.15s ease; }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
   .form-box p { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin: 0 0 14px; letter-spacing: 0.1px; }
   .form-box > p:first-of-type, .hist-label {
     font-family: 'Space Grotesk', 'Inter', sans-serif; text-transform: uppercase;
@@ -408,6 +414,15 @@
 
   <div id="upcoming-banner"></div>
 
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="planner">Planner</button>
+    <button class="tab-btn" data-tab="rewards">Rewards</button>
+    <button class="tab-btn" data-tab="more">More</button>
+  </div>
+
+  <div class="tab-panel active" data-tab-panel="overview">
+
   <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);font-weight:500" id="trend-legend"></div>
 
   <div class="chart-box">
@@ -463,6 +478,10 @@
     <p>What each card is costing you</p>
     <div id="monthly-cost-list"></div>
   </div>
+
+  </div>
+
+  <div class="tab-panel" data-tab-panel="planner">
 
   <div class="form-box" id="planner-box">
     <p>What's the smartest way to pay?</p>
@@ -560,6 +579,10 @@
     <div id="target-result"></div>
   </div>
 
+  </div>
+
+  <div class="tab-panel" data-tab-panel="rewards">
+
   <div class="form-box" id="rewards-box">
     <p>Rewards &amp; points</p>
     <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Separate from debt payoff — just tracks what you've earned and used</p>
@@ -604,6 +627,10 @@
       <button class="reset-link" id="rewards-reset-btn">Clear rewards history</button>
     </p>
   </div>
+
+  </div>
+
+  <div class="tab-panel" data-tab-panel="more">
 
   <div class="form-box" id="achievements-box">
     <p>Achievements</p>
@@ -683,6 +710,9 @@
     <button class="reset-link" id="import-btn">Import backup file</button>
     <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
   </p>
+
+  </div>
+
 </div>
 
 <script>
@@ -3861,6 +3891,28 @@ function initSync() {
     if (c) checkForNewerCloudData(c);
   }, 90000);
 }
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.getAttribute('data-tab-panel') === tabName);
+  });
+  // Charts created while their tab was hidden render at zero size — force a
+  // resize now that the panel is actually visible so they draw correctly.
+  [chart, barChart, statementCompareChart, plannerChart, reserveChart, rewardsCashbackChart, rewardsPointsChart].forEach(c => {
+    if (c && typeof c.resize === 'function') {
+      try { c.resize(); } catch (e) { /* chart may not be attached to a visible canvas yet, ignore */ }
+    }
+  });
+}
+
+document.getElementById('tab-bar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  switchTab(btn.getAttribute('data-tab'));
+});
 
 render();
 renderReserves();
