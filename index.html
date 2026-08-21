@@ -2129,9 +2129,26 @@ document.getElementById('type-select').addEventListener('change', updateTypeHint
 updateTypeHint();
 
 function getStrategyOrder(list, strategy) {
-  if (strategy === 'snowball') return [...list].sort((a, b) => a.balance - b.balance);
-  if (strategy === 'hybrid') return [...list].sort((a, b) => (b.balance * getEffectiveApr(b)) - (a.balance * getEffectiveApr(a)));
-  return [...list].sort((a, b) => getEffectiveApr(b) - getEffectiveApr(a));
+  const promoTieBreak = (a, b) => {
+    const aPromo = isInPromoPeriod(a) && getEffectiveApr(a, 0) <= 0.005;
+    const bPromo = isInPromoPeriod(b) && getEffectiveApr(b, 0) <= 0.005;
+    if (aPromo && bPromo) {
+      const ad = a.promoUntil ? new Date(a.promoUntil + 'T00:00:00').getTime() : Infinity;
+      const bd = b.promoUntil ? new Date(b.promoUntil + 'T00:00:00').getTime() : Infinity;
+      if (ad !== bd) return ad - bd;
+    }
+    return 0;
+  };
+
+  if (strategy === 'snowball') return [...list].sort((a, b) => (a.balance - b.balance) || promoTieBreak(a, b));
+  if (strategy === 'hybrid') return [...list].sort((a, b) => {
+    const diff = (b.balance * getEffectiveApr(b)) - (a.balance * getEffectiveApr(a));
+    return diff || promoTieBreak(a, b);
+  });
+  return [...list].sort((a, b) => {
+    const diff = getEffectiveApr(b) - getEffectiveApr(a);
+    return diff || promoTieBreak(a, b);
+  });
 }
 
 function getStrategyLabel(strategy) {
@@ -2140,19 +2157,63 @@ function getStrategyLabel(strategy) {
   return 'highest-APR-first (avalanche)';
 }
 
+// Split a shared 0% APR pool so cards make similar progress while cards with
+// sooner promo expirations get a modest safety boost. This avoids the old
+// all-extra-to-one-card behavior when multiple cards are tied at 0%.
+function allocateBalancedZeroApr(zeroCards, remaining, pay, budget, monthsFromNow = 0) {
+  if (budget <= 0 || zeroCards.length === 0) return budget;
+  let eligible = zeroCards.filter(c => remaining[c.id] > 0.005);
+
+  while (budget > 0.005 && eligible.length) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    today.setMonth(today.getMonth() + monthsFromNow);
+
+    const urgencyRaw = eligible.map(c => {
+      if (!c.promoUntil) return 0;
+      const end = new Date(c.promoUntil + 'T00:00:00');
+      const monthsLeft = Math.max(1, Math.ceil((end - today) / (1000 * 60 * 60 * 24 * 30.44)));
+      return 1 / monthsLeft;
+    });
+    const maxUrgency = Math.max(...urgencyRaw, 0.000001);
+    const totalBalance = eligible.reduce((s, c) => s + remaining[c.id], 0) || 1;
+
+    const weights = eligible.map((c, i) => {
+      const equalPart = 0.70 / eligible.length;
+      const urgencyPart = 0.25 * (urgencyRaw[i] / maxUrgency) / Math.max(1, eligible.length);
+      const balancePart = 0.05 * (remaining[c.id] / totalBalance);
+      return equalPart + urgencyPart + balancePart;
+    });
+    const totalWeight = weights.reduce((s, w) => s + w, 0) || 1;
+
+    let distributed = 0;
+    eligible.forEach((c, i) => {
+      const share = budget * (weights[i] / totalWeight);
+      const extra = Math.min(share, remaining[c.id]);
+      if (extra > 0.005) {
+        pay[c.id] += extra;
+        remaining[c.id] -= extra;
+        distributed += extra;
+      }
+    });
+
+    budget -= distributed;
+    eligible = eligible.filter(c => remaining[c.id] > 0.005);
+    if (distributed <= 0.005) break;
+  }
+  return budget;
+}
+
 function calculateAllocation(amount, strategy) {
   const active = cards.filter(c => c.balance > 0.005);
   if (active.length === 0) return { plan: [], leftover: amount, error: 'no-debt' };
 
   const totalMins = active.reduce((s, c) => s + Math.min(c.min || 0, c.balance), 0);
-  if (amount < totalMins) {
-    return { plan: [], leftover: 0, error: 'below-min', totalMins };
-  }
+  if (amount < totalMins) return { plan: [], leftover: 0, error: 'below-min', totalMins };
 
   const remaining = {};
-  active.forEach(c => { remaining[c.id] = c.balance; });
   const pay = {};
-  active.forEach(c => { pay[c.id] = 0; });
+  active.forEach(c => { remaining[c.id] = c.balance; pay[c.id] = 0; });
 
   let budget = amount;
   active.forEach(c => {
@@ -2162,8 +2223,7 @@ function calculateAllocation(amount, strategy) {
     budget -= m;
   });
 
-  // Respect money you've specifically set aside for a card — apply that
-  // before the strategy order gets any say in where the rest goes.
+  // Honor specifically earmarked money before general strategy allocation.
   const earmarked = {};
   reserves.filter(r => !r.deleted && r.cardId).forEach(r => {
     earmarked[r.cardId] = (earmarked[r.cardId] || 0) + r.amount;
@@ -2182,16 +2242,22 @@ function calculateAllocation(amount, strategy) {
     }
   });
 
-  const order = getStrategyOrder(active, strategy);
-
-  for (const c of order) {
-    if (budget <= 0) break;
+  // First attack cards currently charging interest according to the selected strategy.
+  const interestCards = active.filter(c => getEffectiveApr(c, 0) > 0.005);
+  const interestOrder = getStrategyOrder(interestCards, strategy);
+  for (const c of interestOrder) {
+    if (budget <= 0.005) break;
     const extra = Math.min(budget, remaining[c.id]);
     pay[c.id] += extra;
     remaining[c.id] -= extra;
     budget -= extra;
   }
 
+  // Then treat active 0% promo cards as a shared pool instead of feeding one card all leftovers.
+  const zeroCards = active.filter(c => getEffectiveApr(c, 0) <= 0.005 && remaining[c.id] > 0.005);
+  budget = allocateBalancedZeroApr(zeroCards, remaining, pay, budget, 0);
+
+  const order = [...interestOrder, ...getStrategyOrder(zeroCards, strategy)];
   const plan = order.map(c => ({
     id: c.id, name: c.name, color: c.color, apr: c.apr,
     effectiveApr: getEffectiveApr(c, 0),
@@ -2567,9 +2633,9 @@ function simulateMinimumOnly() {
 function simulateAvalanche(monthlyBudget, strategy) {
   const balances = {};
   cards.forEach(c => { balances[c.id] = c.balance; });
-  const order = getStrategyOrder(cards, strategy);
   let totalInterest = 0;
   let months = 0;
+
   while (Object.values(balances).some(b => b > 0.01) && months < 600) {
     months++;
     cards.forEach(c => {
@@ -2579,21 +2645,35 @@ function simulateAvalanche(monthlyBudget, strategy) {
         totalInterest += interest;
       }
     });
-    let remaining = monthlyBudget;
-    order.forEach(c => {
-      if (balances[c.id] > 0) {
-        const pay = Math.min(c.min || 0, balances[c.id], remaining);
-        balances[c.id] -= pay;
-        remaining -= pay;
-      }
+
+    let remainingBudget = monthlyBudget;
+    const active = cards.filter(c => balances[c.id] > 0.005);
+    const paid = {};
+    active.forEach(c => { paid[c.id] = 0; });
+
+    // Minimums first.
+    active.forEach(c => {
+      const pay = Math.min(c.min || 0, balances[c.id], remainingBudget);
+      balances[c.id] -= pay;
+      paid[c.id] += pay;
+      remainingBudget -= pay;
     });
-    order.forEach(c => {
-      if (remaining > 0 && balances[c.id] > 0) {
-        const pay = Math.min(remaining, balances[c.id]);
-        balances[c.id] -= pay;
-        remaining -= pay;
-      }
-    });
+
+    // Interest-bearing cards get strategic priority.
+    const interestCards = active.filter(c => balances[c.id] > 0.005 && getEffectiveApr(c, months) > 0.005);
+    const interestOrder = getStrategyOrder(interestCards, strategy);
+    for (const c of interestOrder) {
+      if (remainingBudget <= 0.005) break;
+      const pay = Math.min(remainingBudget, balances[c.id]);
+      balances[c.id] -= pay;
+      paid[c.id] += pay;
+      remainingBudget -= pay;
+    }
+
+    // Any active 0% cards share the remaining budget using the same balanced logic
+    // as the planner, so projections and displayed allocations stay consistent.
+    const zeroCards = active.filter(c => balances[c.id] > 0.005 && getEffectiveApr(c, months) <= 0.005);
+    remainingBudget = allocateBalancedZeroApr(zeroCards, balances, paid, remainingBudget, months);
   }
   return { months, totalInterest };
 }
