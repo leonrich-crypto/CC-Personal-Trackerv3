@@ -414,6 +414,7 @@
   <div id="reminder-banner"></div>
 
   <div id="upcoming-banner"></div>
+  <div id="promo-warning-banner"></div>
 
   <div class="tab-bar" id="tab-bar">
     <button class="tab-btn active" data-tab="overview">Overview</button>
@@ -715,6 +716,8 @@
     <button class="reset-link" id="export-btn">Export backup file</button>
     ·
     <button class="reset-link" id="import-btn">Import backup file</button>
+    ·
+    <button class="reset-link" id="export-csv-btn">Export payment history (CSV)</button>
     <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
   </p>
 
@@ -1639,6 +1642,44 @@ function renderUpcomingBanner() {
   });
 }
 
+function getExpiringPromoCards() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return cards
+    .filter(c => c.balance > 0.005 && isInPromoPeriod(c) && c.promoUntil)
+    .map(c => {
+      const end = new Date(c.promoUntil + 'T00:00:00');
+      const daysAway = Math.round((end - today) / (1000 * 60 * 60 * 24));
+      return { ...c, daysAway };
+    })
+    .filter(c => c.daysAway >= 0 && c.daysAway <= 14)
+    .sort((a, b) => a.daysAway - b.daysAway);
+}
+
+function renderPromoWarningBanner() {
+  const banner = document.getElementById('promo-warning-banner');
+  if (!banner) return;
+  const expiring = getExpiringPromoCards();
+  if (expiring.length === 0) {
+    banner.innerHTML = '';
+    return;
+  }
+  const rows = expiring.map(c => `
+    <div class="upcoming-row">
+      <div>
+        <div class="u-card">${esc(c.name)}</div>
+        <div class="u-due">${c.daysAway === 0 ? 'Promo ends today' : 'Promo ends in ' + c.daysAway + ' day' + (c.daysAway === 1 ? '' : 's')} — jumps to ${c.apr}% APR</div>
+      </div>
+    </div>
+  `).join('');
+  banner.innerHTML = `
+    <div class="upcoming-box" style="border-color:#FAC775;background:rgba(250,199,117,0.06)">
+      <p class="u-title" style="color:#FAC775">⚠️ Promo APR ending soon</p>
+      ${rows}
+    </div>
+  `;
+}
+
 const CYCLE_LENGTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getCardCycleIndex(card, dateObj) {
@@ -1712,12 +1753,18 @@ function markCardPaid(cardId) {
     card.dueDate = pushDueDateOneCycle(card.dueDate);
   }
   markCardCycleHandled(card);
+  let reserveEntryIds;
+  if (reserves.some(r => !r.deleted)) {
+    const funded = allocateFunding([{ id: cardId, amount: payAmount }]);
+    reserveEntryIds = spendFromReserveBuckets(funded[0].funding, `Paid toward ${card.name}`);
+  } else {
+    spendFromReserve(payAmount, `Paid toward ${card.name}`);
+  }
   history.push({
     id: Date.now(), cardId, type: 'payment', amount: payAmount,
     note: 'Minimum payment marked as paid', date: new Date().toISOString(),
-    previousDueDate: previousDueDate
+    previousDueDate: previousDueDate, reserveEntryIds
   });
-  spendFromReserve(payAmount, `Paid toward ${card.name}`);
   saveData();
   render();
   renderReserves();
@@ -1733,12 +1780,18 @@ function payStatementBalance(cardId) {
     card.dueDate = pushDueDateOneCycle(card.dueDate);
   }
   markCardCycleHandled(card);
+  let reserveEntryIds;
+  if (reserves.some(r => !r.deleted)) {
+    const funded = allocateFunding([{ id: cardId, amount }]);
+    reserveEntryIds = spendFromReserveBuckets(funded[0].funding, `Paid statement balance: ${card.name}`);
+  } else {
+    spendFromReserve(amount, `Paid statement balance: ${card.name}`);
+  }
   history.push({
     id: Date.now() + Math.random(), cardId, type: 'payment', amount,
     note: `Paid statement balance: ${card.name}`, date: new Date().toISOString(),
-    previousDueDate: previousDueDate
+    previousDueDate: previousDueDate, reserveEntryIds
   });
-  spendFromReserve(amount, `Paid statement balance: ${card.name}`);
   card.statementBalance = 0;
   saveData();
   render();
@@ -1755,12 +1808,18 @@ function payFullBalance(cardId) {
     card.dueDate = pushDueDateOneCycle(card.dueDate);
   }
   markCardCycleHandled(card);
+  let reserveEntryIds;
+  if (reserves.some(r => !r.deleted)) {
+    const funded = allocateFunding([{ id: cardId, amount }]);
+    reserveEntryIds = spendFromReserveBuckets(funded[0].funding, `Paid in full: ${card.name}`);
+  } else {
+    spendFromReserve(amount, `Paid in full: ${card.name}`);
+  }
   history.push({
     id: Date.now() + Math.random(), cardId, type: 'payment', amount,
     note: `Paid in full: ${card.name}`, date: new Date().toISOString(),
-    previousDueDate: previousDueDate
+    previousDueDate: previousDueDate, reserveEntryIds
   });
-  spendFromReserve(amount, `Paid in full: ${card.name}`);
   saveData();
   render();
   renderReserves();
@@ -2051,6 +2110,7 @@ function render() {
   renderMonthlyCosts();
   checkMilestones();
   renderUpcomingBanner();
+  renderPromoWarningBanner();
   renderBarChart();
   renderStatementCompareChart();
   renderHistory();
@@ -3008,7 +3068,19 @@ document.getElementById('undo-btn').addEventListener('click', () => {
   if (card) {
     if (last.type === 'payment') {
       card.balance += last.amount;
-      reserves.push({ id: Date.now() + Math.random(), amount: last.amount, date: new Date().toISOString(), note: `Undo: returned to reserve (${card.name})` });
+      if (last.reserveEntryIds) {
+        // Payment used the per-account funding breakdown — reverse the exact
+        // reserve entries it spent instead of adding a new lump-sum one, so
+        // per-card and per-bank totals land back where they started.
+        last.reserveEntryIds.forEach(id => {
+          const r = reserves.find(res => res.id === id);
+          if (r) r.deleted = true;
+        });
+      } else {
+        // Legacy entry from before per-account funding tracking — it always
+        // pulled from the reserve as one lump sum, so restore it the same way.
+        reserves.push({ id: Date.now() + Math.random(), amount: last.amount, date: new Date().toISOString(), note: `Undo: returned to reserve (${card.name})` });
+      }
     } else {
       card.balance = Math.max(0, card.balance - last.amount);
     }
@@ -3739,14 +3811,6 @@ function renderReserveHistory() {
   bindDeleteButtons();
 }
 
-function deleteReserveEntry(id) {
-  const entry = reserves.find(r => r.id === id);
-  if (!entry) return;
-  entry.deleted = true;
-  saveData();
-  renderReserves();
-}
-
 function deleteReserveEntries(ids) {
   const idSet = new Set(ids);
   reserves.forEach(r => { if (idSet.has(r.id)) r.deleted = true; });
@@ -3907,14 +3971,35 @@ document.getElementById('card-sort-select').addEventListener('change', () => {
   renderCards();
 });
 
-document.getElementById('save-btn').addEventListener('click', () => {
+document.getElementById('save-btn').addEventListener('click', async () => {
   saveData();
   const status = document.getElementById('save-status');
-  status.textContent = 'Saved just now';
-  status.style.color = 'var(--success)';
-  setTimeout(() => {
-    status.textContent = '';
-  }, 2500);
+  const btn = document.getElementById('save-btn');
+  const cfg = getSyncConfig();
+
+  if (!cfg) {
+    status.textContent = 'Saved just now';
+    status.style.color = 'var(--success)';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = 'Saving & syncing…';
+  status.style.color = 'var(--text-secondary)';
+  try {
+    await checkForNewerCloudData(cfg);
+    await pushToCloud(cfg);
+    setSyncStatusText('Synced just now');
+    status.textContent = 'Saved & synced';
+    status.style.color = 'var(--success)';
+  } catch (err) {
+    status.textContent = 'Saved locally — sync failed, will retry automatically';
+    status.style.color = 'var(--danger)';
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }
 });
 
 window.addEventListener('beforeunload', () => {
@@ -3932,6 +4017,37 @@ document.getElementById('export-btn').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = url;
   a.download = 'credit-card-tracker-backup-' + localISO(new Date()) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('export-csv-btn').addEventListener('click', () => {
+  const csvEscape = (val) => {
+    const s = String(val == null ? '' : val);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const rows = [['Date', 'Card', 'Type', 'Amount', 'Note']];
+  history
+    .filter(h => !h.deleted)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .forEach(h => {
+      const card = cards.find(c => c.id === h.cardId);
+      rows.push([
+        new Date(h.date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        card ? card.name : (h.cardId || ''),
+        h.type || 'payment',
+        (h.amount || 0).toFixed(2),
+        h.note || ''
+      ]);
+    });
+  const csvContent = rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'credit-card-payment-history-' + localISO(new Date()) + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -4363,6 +4479,14 @@ render();
 renderReserves();
 renderInstallBanner();
 initSync();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Offline support just won't be available -- everything else still works normally.
+    });
+  });
+}
 </script>
 </body>
 </html>
