@@ -4490,6 +4490,8 @@ function refreshPlaidButtonState() {
   document.getElementById('plaid-connect-btn').textContent = connected ? 'Connect another bank' : 'Connect your bank';
   document.getElementById('plaid-sync-btn').style.display = connected ? 'inline-block' : 'none';
   document.getElementById('plaid-refresh-connections-btn').style.display = connected ? 'inline-block' : 'none';
+  document.getElementById('plaid-refresh-connections-btn').textContent = 'Show connected banks';
+  document.getElementById('plaid-connections-list').innerHTML = '';
   document.getElementById('plaid-disconnect-wrap').style.display = connected ? 'block' : 'none';
 }
 
@@ -4686,7 +4688,18 @@ async function renderPlaidConnectionsList() {
   }
 }
 
-document.getElementById('plaid-refresh-connections-btn').addEventListener('click', renderPlaidConnectionsList);
+document.getElementById('plaid-refresh-connections-btn').addEventListener('click', () => {
+  const btn = document.getElementById('plaid-refresh-connections-btn');
+  const box = document.getElementById('plaid-connections-list');
+  const isCurrentlyShown = box.innerHTML.trim().length > 0;
+  if (isCurrentlyShown) {
+    box.innerHTML = '';
+    btn.textContent = 'Show connected banks';
+  } else {
+    btn.textContent = 'Hide connected banks';
+    renderPlaidConnectionsList();
+  }
+});
 
 document.getElementById('sync-connect-btn').addEventListener('click', async () => {
   const url = document.getElementById('sync-url').value.trim();
