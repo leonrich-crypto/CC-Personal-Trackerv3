@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <style>
   :root {
     --bg: #0A0A0C;
@@ -701,6 +702,16 @@
       </div>
     </div>
     <p id="sync-error" style="font-size:12px;color:var(--danger);margin:10px 0 0;display:none"></p>
+  </div>
+
+  <div class="form-box" id="plaid-box">
+    <p>Connect your bank (experimental)</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand. Currently running in <strong>sandbox mode</strong> — safe to try with Plaid's fake test banks before ever connecting a real one.</p>
+    <div class="row">
+      <button class="primary" id="plaid-connect-btn">Connect your bank</button>
+      <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
+    </div>
+    <p id="plaid-status" style="font-size:12px;color:var(--text-secondary);margin:10px 0 0"></p>
   </div>
 
   <p class="footer-note">
@@ -4349,6 +4360,97 @@ function renderSyncUI() {
     statusBox.style.display = 'none';
   }
 }
+
+const PLAID_BRIDGE_URL = 'https://plaid-bridge.leonrichard074.workers.dev';
+
+function setPlaidStatus(text, isError) {
+  const el = document.getElementById('plaid-status');
+  el.textContent = text;
+  el.style.color = isError ? 'var(--danger)' : 'var(--text-secondary)';
+}
+
+function refreshPlaidButtonState() {
+  const connected = localStorage.getItem('cc-tracker-plaid-connected') === 'true';
+  document.getElementById('plaid-connect-btn').textContent = connected ? 'Connect another bank' : 'Connect your bank';
+  document.getElementById('plaid-sync-btn').style.display = connected ? 'inline-block' : 'none';
+}
+
+document.getElementById('plaid-connect-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('plaid-connect-btn');
+  btn.disabled = true;
+  setPlaidStatus('Connecting to Plaid…');
+  try {
+    const res = await fetch(`${PLAID_BRIDGE_URL}/create-link-token`);
+    const data = await res.json();
+    if (!res.ok || !data.link_token) {
+      setPlaidStatus('Could not start connection: ' + (data.error || 'unknown error'), true);
+      btn.disabled = false;
+      return;
+    }
+
+    const handler = Plaid.create({
+      token: data.link_token,
+      onSuccess: async (public_token) => {
+        setPlaidStatus('Finishing connection…');
+        try {
+          const exchangeRes = await fetch(`${PLAID_BRIDGE_URL}/exchange-public-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_token })
+          });
+          const exchangeData = await exchangeRes.json();
+          if (exchangeRes.ok && exchangeData.ok) {
+            localStorage.setItem('cc-tracker-plaid-connected', 'true');
+            refreshPlaidButtonState();
+            setPlaidStatus('Connected! Tap "Sync balances now" to pull in your real data.');
+          } else {
+            setPlaidStatus('Connected to your bank, but saving the connection failed: ' + (exchangeData.error || 'unknown error'), true);
+          }
+        } catch (err) {
+          setPlaidStatus('Connected to your bank, but saving the connection failed: ' + err.message, true);
+        }
+        btn.disabled = false;
+      },
+      onExit: (err) => {
+        btn.disabled = false;
+        if (err) setPlaidStatus('Connection cancelled or failed: ' + (err.error_message || err.error_code || 'unknown'), true);
+        else setPlaidStatus('');
+      }
+    });
+    handler.open();
+  } catch (err) {
+    setPlaidStatus('Could not reach the connection service: ' + err.message, true);
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('plaid-sync-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('plaid-sync-btn');
+  btn.disabled = true;
+  setPlaidStatus('Pulling your latest balances…');
+  try {
+    const res = await fetch(`${PLAID_BRIDGE_URL}/sync-balances`);
+    const data = await res.json();
+    if (data.ok) {
+      setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank. Pulling into this device…`);
+      const cfg = getSyncConfig();
+      if (cfg) {
+        await checkForNewerCloudData(cfg);
+        setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank — up to date.`);
+      } else {
+        setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank. Set up "Sync across devices" above with the same sync code to see it here.`);
+      }
+    } else {
+      setPlaidStatus('Sync failed: ' + (data.reason || data.error || 'unknown error'), true);
+    }
+  } catch (err) {
+    setPlaidStatus('Could not reach the sync service: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+refreshPlaidButtonState();
 
 document.getElementById('sync-connect-btn').addEventListener('click', async () => {
   const url = document.getElementById('sync-url').value.trim();
