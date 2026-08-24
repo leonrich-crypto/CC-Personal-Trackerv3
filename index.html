@@ -432,7 +432,7 @@
     <canvas id="debt-chart" role="img" aria-label="Line chart of total credit card debt and per-card balances over time"></canvas>
   </div>
 
-  <p style="margin:0 0 -8px"><button class="reset-link" id="manual-log-toggle-btn">Log a payment or charge manually</button></p>
+  <p style="margin:0 0 20px"><button class="reset-link" id="manual-log-toggle-btn">Log a payment or charge manually</button></p>
 
   <div class="form-box" id="manual-log-box">
     <p>Log a payment or charge</p>
@@ -918,7 +918,10 @@ function renderCards() {
 
     col.innerHTML = `
       <button class="card-remove-btn" data-card-id="${c.id}" aria-label="Remove ${esc(c.name)}">&times;</button>
-      <p class="name name-row" data-card-id="${c.id}" style="cursor:pointer" title="Tap to rename">${esc(c.name)}</p>
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 8px">
+        <input type="color" class="color-picker-input card-color-input" data-card-id="${c.id}" value="${c.color || '#4FA3FF'}" style="width:20px;height:20px;flex-shrink:0;padding:0" title="Change card color" />
+        <p class="name name-row" data-card-id="${c.id}" style="cursor:pointer;margin:0" title="Tap to rename">${esc(c.name)}</p>
+      </div>
       <div class="category-badge-row" data-card-id="${c.id}">${(c.categories && c.categories.length) ? c.categories.map(cat => `<span class="category-badge" style="border-color:${c.color};color:${c.color}">${esc(cat)}</span>`).join('') : `<span class="category-badge" style="border-color:var(--border);color:var(--text-muted)">+ Add category</span>`}</div>
       <p class="apr apr-row" data-card-id="${c.id}" style="cursor:pointer">${isInPromoPeriod(c) ? `${getEffectiveApr(c, 0)}% promo APR` : c.apr == null ? `<span style="color:var(--danger)">APR unknown — tap to set</span>` : `${c.apr}% APR`}</p>
       <p class="bal">${fmt(c.balance)}</p>
@@ -1209,6 +1212,24 @@ function renderCards() {
           render();
         }
       });
+    });
+  });
+
+  list.querySelectorAll('.card-color-input').forEach(input => {
+    input.addEventListener('click', (e) => e.stopPropagation());
+    input.addEventListener('input', (e) => {
+      const cardId = input.getAttribute('data-card-id');
+      const c = cards.find(x => x.id === cardId);
+      if (!c) return;
+      c.color = e.target.value;
+      // Update just this card's accent color live, without a full re-render,
+      // so the color picker itself doesn't get torn down mid-interaction.
+      const col = input.closest('.card-col');
+      if (col) col.style.setProperty('--card-color', c.color);
+    });
+    input.addEventListener('change', () => {
+      saveData();
+      render();
     });
   });
 
