@@ -712,6 +712,7 @@
       <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
     </div>
     <p id="plaid-status" style="font-size:12px;color:var(--text-secondary);margin:10px 0 0"></p>
+    <div id="plaid-sync-details" style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
     <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
       <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect bank &amp; delete stored access</button>
     </p>
@@ -4533,6 +4534,7 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
   const btn = document.getElementById('plaid-sync-btn');
   btn.disabled = true;
   setPlaidStatus('Pulling your latest balances…');
+  document.getElementById('plaid-sync-details').style.display = 'none';
   try {
     const res = await fetch(`${PLAID_BRIDGE_URL}/sync-balances`, { headers: plaidFetchHeaders() });
     const data = await res.json();
@@ -4549,6 +4551,13 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
         setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary} — up to date.${errNote}`, !!errNote);
       } else {
         setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary}. Set up "Sync across devices" above with the same sync code to see it here.${errNote}`, !!errNote);
+      }
+      if (data.connectionDetails && data.connectionDetails.length) {
+        const detailsBox = document.getElementById('plaid-sync-details');
+        detailsBox.style.display = 'block';
+        detailsBox.textContent = data.connectionDetails.map(d =>
+          `${d.institution}: ${d.creditAccountsFound} credit card(s) found out of ${d.totalAccountsOnItem} account(s) on this connection\n  Account types seen: ${d.accountTypesSeen.join(', ') || '(none)'}`
+        ).join('\n\n');
       }
     } else {
       setPlaidStatus('Sync failed: ' + (data.reason || data.error || 'unknown error'), true);
