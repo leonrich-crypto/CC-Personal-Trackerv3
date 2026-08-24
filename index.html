@@ -4516,6 +4516,31 @@ function refreshPlaidButtonState() {
   document.getElementById('plaid-disconnect-wrap').style.display = connected ? 'block' : 'none';
 }
 
+// The "connected" flag above is only ever local to this one browser/device --
+// it doesn't know whether a bank is actually connected on the shared backend.
+// On load, ask the Worker directly so a fresh device (or a cleared browser)
+// correctly shows Sync/Disconnect if a real connection already exists,
+// instead of always defaulting to "not connected."
+async function syncPlaidConnectedFlagWithReality() {
+  try {
+    const res = await fetch(`${PLAID_BRIDGE_URL}/connections`, { headers: plaidFetchHeaders() });
+    const data = await res.json();
+    if (data.ok) {
+      const reallyConnected = (data.connections || []).length > 0;
+      const currentFlag = localStorage.getItem('cc-tracker-plaid-connected') === 'true';
+      if (reallyConnected !== currentFlag) {
+        if (reallyConnected) localStorage.setItem('cc-tracker-plaid-connected', 'true');
+        else localStorage.removeItem('cc-tracker-plaid-connected');
+        refreshPlaidButtonState();
+      }
+    }
+  } catch (err) {
+    // If we can't reach the Worker (offline, etc.), just leave the local
+    // flag as-is rather than guessing -- this check is a correction, not
+    // a requirement for the rest of the app to function.
+  }
+}
+
 document.getElementById('plaid-connect-btn').addEventListener('click', async () => {
   const btn = document.getElementById('plaid-connect-btn');
   btn.disabled = true;
@@ -4608,6 +4633,7 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
 });
 
 refreshPlaidButtonState();
+syncPlaidConnectedFlagWithReality();
 
 document.getElementById('manual-log-toggle-btn').addEventListener('click', () => {
   manualLogFormForcedOpen = !manualLogFormForcedOpen;
