@@ -432,7 +432,7 @@
     <canvas id="debt-chart" role="img" aria-label="Line chart of total credit card debt and per-card balances over time"></canvas>
   </div>
 
-  <div class="form-box">
+  <div class="form-box" id="manual-log-box">
     <p>Log a payment or charge</p>
     <div class="row">
       <select id="card-select"></select>
@@ -912,9 +912,9 @@ function renderCards() {
 
     col.innerHTML = `
       <button class="card-remove-btn" data-card-id="${c.id}" aria-label="Remove ${esc(c.name)}">&times;</button>
-      <p class="name">${esc(c.name)}</p>
+      <p class="name name-row" data-card-id="${c.id}" style="cursor:pointer" title="Tap to rename">${esc(c.name)}</p>
       <div class="category-badge-row" data-card-id="${c.id}">${(c.categories && c.categories.length) ? c.categories.map(cat => `<span class="category-badge" style="border-color:${c.color};color:${c.color}">${esc(cat)}</span>`).join('') : `<span class="category-badge" style="border-color:var(--border);color:var(--text-muted)">+ Add category</span>`}</div>
-      <p class="apr">${isInPromoPeriod(c) ? `${getEffectiveApr(c, 0)}% promo APR` : `${c.apr}% APR`}</p>
+      <p class="apr apr-row" data-card-id="${c.id}" style="cursor:pointer">${isInPromoPeriod(c) ? `${getEffectiveApr(c, 0)}% promo APR` : c.apr == null ? `<span style="color:var(--danger)">APR unknown — tap to set</span>` : `${c.apr}% APR`}</p>
       <p class="bal">${fmt(c.balance)}</p>
       <div class="meta">
         <div class="meta-row editable min-payment-row" data-card-id="${c.id}"><span>Min payment${c.minMode === 'auto' ? ' <span style="color:var(--accent-bright);font-weight:400">(auto)</span>' : ''}</span><span style="${dueSoon ? 'color:var(--danger)' : ''}">${fmt(c.min || 0)}</span></div>
@@ -1206,6 +1206,83 @@ function renderCards() {
     });
   });
 
+  list.querySelectorAll('.name-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if (row.dataset.editing === 'true') return;
+      row.dataset.editing = 'true';
+      const cardId = row.getAttribute('data-card-id');
+      const c = cards.find(x => x.id === cardId);
+      if (!c) return;
+      const originalHtml = row.innerHTML;
+      row.style.cursor = 'default';
+      row.innerHTML = `
+        <span style="display:flex;gap:6px;align-items:center;width:100%" onclick="event.stopPropagation()">
+          <input type="text" value="${esc(c.name)}" id="name-edit-${cardId}" style="flex:1;font-size:15px;font-weight:700" maxlength="60" />
+          <button data-save-name="${cardId}" style="padding:4px 10px;font-size:12px;flex-shrink:0">Save</button>
+        </span>
+      `;
+      const input = document.getElementById(`name-edit-${cardId}`);
+      input.focus();
+      input.select();
+      const commit = () => {
+        const newName = input.value.trim();
+        if (newName) {
+          c.name = newName;
+          saveData();
+          render();
+        } else {
+          row.dataset.editing = 'false';
+          row.style.cursor = 'pointer';
+          row.innerHTML = originalHtml;
+        }
+      };
+      row.querySelector('[data-save-name]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        commit();
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') {
+          row.dataset.editing = 'false';
+          row.style.cursor = 'pointer';
+          row.innerHTML = originalHtml;
+        }
+      });
+    });
+  });
+
+  list.querySelectorAll('.apr-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if (row.dataset.editing === 'true') return;
+      row.dataset.editing = 'true';
+      const cardId = row.getAttribute('data-card-id');
+      const c = cards.find(x => x.id === cardId);
+      if (!c) return;
+      const originalHtml = row.innerHTML;
+      row.style.cursor = 'default';
+      row.innerHTML = `
+        <span style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
+          <input type="number" step="0.01" value="${c.apr != null ? c.apr : ''}" placeholder="APR %" id="apr-edit-${cardId}" style="width:80px" />
+          <button data-save-apr="${cardId}" style="padding:4px 10px;font-size:12px">Save</button>
+        </span>
+      `;
+      row.querySelector('[data-save-apr]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newApr = parseFloat(document.getElementById(`apr-edit-${cardId}`).value);
+        if (!isNaN(newApr) && newApr >= 0) {
+          c.apr = newApr;
+          delete c.aprNeedsReview;
+          saveData();
+          render();
+        } else {
+          row.dataset.editing = 'false';
+          row.style.cursor = 'pointer';
+          row.innerHTML = originalHtml;
+        }
+      });
+    });
+  });
+
   list.querySelectorAll('.promo-apr-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
@@ -1339,11 +1416,20 @@ function getEffectiveApr(card, monthsFromNow) {
     const promoEnd = new Date(card.promoUntil + 'T00:00:00');
     if (checkDate <= promoEnd) return parseFloat(card.promoApr);
   }
+  // An unknown APR (e.g. a Plaid-synced card whose issuer didn't report a
+  // rate) should never be treated as 0% -- that would falsely deprioritize
+  // it in payoff strategy as if it were free debt. Treat it conservatively
+  // as high-cost until the real rate is confirmed.
+  if (card.apr == null) return 29.99;
   return card.apr;
 }
 
 function isInPromoPeriod(card) {
-  return getEffectiveApr(card, 0) !== card.apr;
+  if (!card.promoUntil || card.promoApr == null || card.promoApr === '') return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const promoEnd = new Date(card.promoUntil + 'T00:00:00');
+  return today <= promoEnd;
 }
 
 function getCardStartBalance(cardId) {
@@ -2024,7 +2110,7 @@ function renderMonthlyCosts() {
   withCost.forEach(c => {
     const aprLabel = isInPromoPeriod(c)
       ? `${c.effectiveApr}% promo APR until ${new Date(c.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-      : `${c.apr}% APR`;
+      : c.apr == null ? 'APR unknown (estimated cost shown)' : `${c.apr}% APR`;
     html += `
       <div class="cost-row" style="--card-color:${c.color}">
         <div>
@@ -2115,6 +2201,11 @@ function renderNetPosition() {
 function render() {
   cards.forEach(c => recalcAutoMin(c));
   document.getElementById('total-owed').textContent = fmt(totalOwed());
+  const manualLogBox = document.getElementById('manual-log-box');
+  if (manualLogBox) {
+    const anyManualCards = cards.some(c => !c.plaidAccountId);
+    manualLogBox.style.display = anyManualCards ? 'block' : 'none';
+  }
   const net = monthNet();
   const netEl = document.getElementById('month-net');
   netEl.textContent = Math.abs(net) < 0.005 ? fmt(0) : (net < 0 ? '-' : '+') + fmt(Math.abs(net));
@@ -2572,7 +2663,7 @@ function renderPlanner(amount) {
     }
     const aprLabel = p.promoUntil
       ? `<span style="color:var(--success);font-weight:600">${p.effectiveApr}% promo APR</span> (${p.apr}% regular, until ${new Date(p.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
-      : `${p.apr}% APR`;
+      : p.apr == null ? 'APR unknown' : `${p.apr}% APR`;
     const fundingAttr = esc(JSON.stringify(p.funding || []));
     html += `
       <div class="planner-row" style="--card-color:${p.color}">
