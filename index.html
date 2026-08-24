@@ -4537,13 +4537,18 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
     const res = await fetch(`${PLAID_BRIDGE_URL}/sync-balances`, { headers: plaidFetchHeaders() });
     const data = await res.json();
     if (data.ok) {
-      setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank. Pulling into this device…`);
+      const connSummary = data.connectionsUsed != null ? ` from ${data.connectionsUsed} connected bank(s)` : '';
+      let errNote = '';
+      if (data.connectionErrors && data.connectionErrors.length) {
+        errNote = ' ⚠️ ' + data.connectionErrors.map(e => `${e.institution}: ${e.error}`).join(' | ');
+      }
+      setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary}. Pulling into this device…${errNote}`, !!errNote);
       const cfg = getSyncConfig();
       if (cfg) {
         await checkForNewerCloudData(cfg);
-        setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank — up to date.`);
+        setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary} — up to date.${errNote}`, !!errNote);
       } else {
-        setPlaidStatus(`Synced ${data.cardsUpdated} card(s) from your bank. Set up "Sync across devices" above with the same sync code to see it here.`);
+        setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary}. Set up "Sync across devices" above with the same sync code to see it here.${errNote}`, !!errNote);
       }
     } else {
       setPlaidStatus('Sync failed: ' + (data.reason || data.error || 'unknown error'), true);
