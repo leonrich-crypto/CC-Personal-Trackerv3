@@ -309,6 +309,10 @@
   }
   .dismiss-btn:hover { background: rgba(79,163,255,0.12); }
   .dismiss-btn:disabled { opacity: 0.5; cursor: default; background: transparent; }
+  .u-no-min {
+    display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--success); font-weight: 500;
+  }
+  .u-no-min svg { flex-shrink: 0; }
   .savings-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
   .savings-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .savings-stat .s-label { font-size: 11.5px; color: var(--text-secondary); margin: 0 0 6px; font-weight: 500; }
@@ -1732,19 +1736,34 @@ function renderUpcomingBanner() {
     banner.innerHTML = '';
     return;
   }
-  const rows = upcoming.map(c => `
+  const rows = upcoming.map(c => {
+    // A genuine $0 minimum (e.g. Chase reports "no minimum payment due right
+    // now" for this cycle) isn't something to "pay" or "mark as paid" -- show
+    // it as a status instead of action buttons, so it doesn't read as if
+    // there's a real amount owed.
+    const hasMinDue = (c.min || 0) > 0.005;
+    const actions = hasMinDue
+      ? `
+        <div class="u-min">${fmt(c.min || 0)}</div>
+        <button class="dismiss-btn" data-card-id="${c.id}">Already paid minimum</button>
+        <button class="mark-paid-btn" data-card-id="${c.id}">Pay minimum</button>
+      `
+      : `
+        <div class="u-no-min">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          No minimum due
+        </div>
+      `;
+    return `
     <div class="upcoming-row">
       <div>
         <div class="u-card">${esc(c.name)}</div>
         <div class="u-due">${c.daysAway === 0 ? 'Due today' : 'Due in ' + c.daysAway + ' day' + (c.daysAway === 1 ? '' : 's') + ' · ' + c.dueLabel}</div>
       </div>
-      <div class="u-actions">
-        <div class="u-min">${fmt(c.min || 0)}</div>
-        <button class="dismiss-btn" data-card-id="${c.id}">Already paid minimum</button>
-        <button class="mark-paid-btn" data-card-id="${c.id}">Pay minimum</button>
-      </div>
+      <div class="u-actions">${actions}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   banner.innerHTML = `
     <div class="upcoming-box">
       <p class="u-title">Payments due soon</p>
