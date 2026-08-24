@@ -4590,9 +4590,12 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
       if (data.connectionDetails && data.connectionDetails.length) {
         const detailsBox = document.getElementById('plaid-sync-details');
         detailsBox.style.display = 'block';
-        detailsBox.textContent = data.connectionDetails.map(d =>
-          `${d.institution}: ${d.creditAccountsFound} credit card(s) found out of ${d.totalAccountsOnItem} account(s) on this connection\n  Account types seen: ${d.accountTypesSeen.join(', ') || '(none)'}`
-        ).join('\n\n');
+        detailsBox.textContent = data.connectionDetails.map(d => {
+          const balLines = (d.creditAccountBalances || []).map(b =>
+            `    ${b.name}: Plaid says balance = ${b.balanceFromPlaid != null ? '$' + b.balanceFromPlaid.toFixed(2) : 'null'}`
+          ).join('\n');
+          return `${d.institution}: ${d.creditAccountsFound} credit card(s) found out of ${d.totalAccountsOnItem} account(s) on this connection\n  Account types seen: ${d.accountTypesSeen.join(', ') || '(none)'}${balLines ? '\n' + balLines : ''}`;
+        }).join('\n\n');
       }
     } else {
       setPlaidStatus('Sync failed: ' + (data.reason || data.error || 'unknown error'), true);
