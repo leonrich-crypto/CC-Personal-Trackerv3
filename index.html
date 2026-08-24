@@ -432,6 +432,8 @@
     <canvas id="debt-chart" role="img" aria-label="Line chart of total credit card debt and per-card balances over time"></canvas>
   </div>
 
+  <p style="margin:0 0 -8px"><button class="reset-link" id="manual-log-toggle-btn">Log a payment or charge manually</button></p>
+
   <div class="form-box" id="manual-log-box">
     <p>Log a payment or charge</p>
     <div class="row">
@@ -706,15 +708,17 @@
 
   <div class="form-box" id="plaid-box">
     <p>Connect your bank (experimental)</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand. Currently running in <strong>sandbox mode</strong> — safe to try with Plaid's fake test banks before ever connecting a real one.</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand.</p>
     <div class="row">
       <button class="primary" id="plaid-connect-btn">Connect your bank</button>
       <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
+      <button id="plaid-refresh-connections-btn" style="display:none">Show connected banks</button>
     </div>
     <p id="plaid-status" style="font-size:12px;color:var(--text-secondary);margin:10px 0 0"></p>
     <div id="plaid-sync-details" style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
+    <div id="plaid-connections-list" style="margin:10px 0 0;display:flex;flex-direction:column;gap:6px"></div>
     <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
-      <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect bank &amp; delete stored access</button>
+      <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect ALL banks &amp; delete stored access</button>
     </p>
   </div>
 
@@ -776,6 +780,7 @@ let rewards = JSON.parse(localStorage.getItem('cc-tracker-rewards-v2') || 'null'
 let achievements = JSON.parse(localStorage.getItem('cc-tracker-achievements-v2') || 'null') || [];
 const celebratedRaw = localStorage.getItem('cc-tracker-celebrated-v2');
 let celebrated = JSON.parse(celebratedRaw || 'null') || [];
+let manualLogFormForcedOpen = false;
 let lastOpenedAt = new Date().toISOString();
 if (celebratedRaw === null) {
   celebrated = cards.filter(c => c.balance <= 0.01).map(c => c.id);
@@ -2205,7 +2210,13 @@ function render() {
   const manualLogBox = document.getElementById('manual-log-box');
   if (manualLogBox) {
     const anyManualCards = cards.some(c => !c.plaidAccountId);
-    manualLogBox.style.display = anyManualCards ? 'block' : 'none';
+    const shouldShow = anyManualCards || manualLogFormForcedOpen;
+    manualLogBox.style.display = shouldShow ? 'block' : 'none';
+    const toggleBtn = document.getElementById('manual-log-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.style.display = anyManualCards ? 'none' : 'inline';
+      toggleBtn.textContent = manualLogFormForcedOpen ? 'Hide manual entry form' : 'Log a payment or charge manually';
+    }
   }
   const net = monthNet();
   const netEl = document.getElementById('month-net');
@@ -4478,6 +4489,7 @@ function refreshPlaidButtonState() {
   const connected = localStorage.getItem('cc-tracker-plaid-connected') === 'true';
   document.getElementById('plaid-connect-btn').textContent = connected ? 'Connect another bank' : 'Connect your bank';
   document.getElementById('plaid-sync-btn').style.display = connected ? 'inline-block' : 'none';
+  document.getElementById('plaid-refresh-connections-btn').style.display = connected ? 'inline-block' : 'none';
   document.getElementById('plaid-disconnect-wrap').style.display = connected ? 'block' : 'none';
 }
 
@@ -4571,15 +4583,20 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
 
 refreshPlaidButtonState();
 
+document.getElementById('manual-log-toggle-btn').addEventListener('click', () => {
+  manualLogFormForcedOpen = !manualLogFormForcedOpen;
+  render();
+});
+
 document.getElementById('plaid-disconnect-btn').addEventListener('click', async () => {
   const btn = document.getElementById('plaid-disconnect-btn');
   if (btn.dataset.confirming !== 'true') {
     btn.dataset.confirming = 'true';
-    btn.textContent = 'Click again to confirm — this revokes access on Plaid\u2019s side too';
+    btn.textContent = 'Click again to confirm — this revokes access on Plaid\u2019s side too, for EVERY bank';
     setTimeout(() => {
       if (btn.dataset.confirming === 'true') {
         btn.dataset.confirming = 'false';
-        btn.textContent = 'Disconnect bank & delete stored access';
+        btn.textContent = 'Disconnect ALL banks & delete stored access';
       }
     }, 4000);
     return;
@@ -4593,6 +4610,7 @@ document.getElementById('plaid-disconnect-btn').addEventListener('click', async 
     if (data.ok) {
       localStorage.removeItem('cc-tracker-plaid-connected');
       refreshPlaidButtonState();
+      document.getElementById('plaid-connections-list').innerHTML = '';
       setPlaidStatus('Disconnected. Your access has been revoked and deleted.');
     } else {
       setPlaidStatus('Disconnect failed: ' + (data.error || data.reason || 'unknown error'), true);
@@ -4601,9 +4619,74 @@ document.getElementById('plaid-disconnect-btn').addEventListener('click', async 
     setPlaidStatus('Could not reach the disconnect service: ' + err.message, true);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Disconnect bank & delete stored access';
+    btn.textContent = 'Disconnect ALL banks & delete stored access';
   }
 });
+
+async function renderPlaidConnectionsList() {
+  const box = document.getElementById('plaid-connections-list');
+  box.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">Loading connected banks…</p>';
+  try {
+    const res = await fetch(`${PLAID_BRIDGE_URL}/connections`, { headers: plaidFetchHeaders() });
+    const data = await res.json();
+    if (!data.ok || !data.connections) {
+      box.innerHTML = '<p style="font-size:12px;color:var(--danger)">Could not load connections.</p>';
+      return;
+    }
+    if (data.connections.length === 0) {
+      box.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">No banks connected.</p>';
+      return;
+    }
+    box.innerHTML = data.connections.map(c => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 12px">
+        <span style="font-size:13px">${esc(c.institution_name)}</span>
+        <button class="reset-link" data-disconnect-item="${esc(c.item_id)}" style="color:var(--danger);font-size:12px">Disconnect this one</button>
+      </div>
+    `).join('');
+    box.querySelectorAll('[data-disconnect-item]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (btn.dataset.confirming !== 'true') {
+          btn.dataset.confirming = 'true';
+          const original = btn.textContent;
+          btn.textContent = 'Click again to confirm';
+          setTimeout(() => {
+            if (btn.dataset.confirming === 'true') {
+              btn.dataset.confirming = 'false';
+              btn.textContent = original;
+            }
+          }, 4000);
+          return;
+        }
+        btn.dataset.confirming = 'false';
+        btn.disabled = true;
+        const itemId = btn.getAttribute('data-disconnect-item');
+        setPlaidStatus('Disconnecting that bank…');
+        try {
+          const res = await fetch(`${PLAID_BRIDGE_URL}/disconnect?item_id=${encodeURIComponent(itemId)}`, { headers: plaidFetchHeaders() });
+          const data = await res.json();
+          if (data.ok) {
+            setPlaidStatus(`Disconnected. ${data.remainingCount} bank(s) still connected.`);
+            if (data.remainingCount === 0) {
+              localStorage.removeItem('cc-tracker-plaid-connected');
+              refreshPlaidButtonState();
+            }
+            await renderPlaidConnectionsList();
+          } else {
+            setPlaidStatus('Disconnect failed: ' + (data.error || 'unknown error'), true);
+            btn.disabled = false;
+          }
+        } catch (err) {
+          setPlaidStatus('Could not reach the disconnect service: ' + err.message, true);
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (err) {
+    box.innerHTML = `<p style="font-size:12px;color:var(--danger)">Could not reach the connection service: ${esc(err.message)}</p>`;
+  }
+}
+
+document.getElementById('plaid-refresh-connections-btn').addEventListener('click', renderPlaidConnectionsList);
 
 document.getElementById('sync-connect-btn').addEventListener('click', async () => {
   const url = document.getElementById('sync-url').value.trim();
