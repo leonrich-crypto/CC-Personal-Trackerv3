@@ -284,6 +284,14 @@
   }
   .reward-row .rw-name { font-weight: 600; color: var(--text-primary); }
   .reward-row .rw-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .loyalty-row {
+    display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; gap: 10px;
+  }
+  .loyalty-row .ly-name { font-weight: 600; color: var(--text-primary); }
+  .loyalty-row .ly-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .loyalty-row .ly-meta.stale { color: var(--danger); }
+  .loyalty-row .ly-amt { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .upcoming-box {
     background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.35); border-radius: 14px;
     padding: 18px 18px 16px; margin-bottom: 24px;
@@ -643,6 +651,53 @@
     </p>
   </div>
 
+  <div class="form-box" id="loyalty-box">
+    <p>Point &amp; mile balances</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Fed by the bookmarklet below, or type/paste them in yourself — no scraping, no stored logins</p>
+    <div id="loyalty-list"></div>
+    <div class="row" style="margin-top:4px">
+      <input id="loyalty-name" type="text" placeholder="Program name (e.g. Chase Ultimate Rewards)" style="flex:2;min-width:160px" />
+      <input id="loyalty-balance" type="number" step="1" placeholder="Balance" style="width:100px" />
+      <input id="loyalty-value" type="number" step="0.01" placeholder="¢/point (optional)" style="width:130px" />
+    </div>
+    <div class="row">
+      <button class="primary" id="loyalty-add-btn" style="flex:1">Add / update program</button>
+    </div>
+    <p class="hist-label" style="margin-top:16px">Bulk import (CSV)</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">Format: <code>program,balance,date</code> — one per line. Date is optional (defaults to today); matches by program name.</p>
+    <div class="row">
+      <textarea id="loyalty-csv" rows="3" placeholder="Chase Ultimate Rewards,84200,2026-08-20&#10;Amex Membership Rewards,51000" style="flex:1;font-family:monospace;font-size:12.5px"></textarea>
+    </div>
+    <div class="row">
+      <button id="loyalty-import-btn" style="flex:1">Import CSV</button>
+    </div>
+    <p id="loyalty-import-status" style="font-size:12.5px;color:var(--text-muted);margin:8px 0 0"></p>
+  </div>
+
+  <div class="form-box" id="loyalty-bookmarklet-box">
+    <p>Auto-update via bookmarklet (desktop Chrome)</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
+      Click this while logged into a bank or loyalty site yourself, then click a number on the page — it sends that straight to your tracker. Works for both card balances (e.g. a stopgap for Discover, whose Plaid data hasn't populated yet) and points/miles balances. Nothing is stored or automated; it only runs the moment you click it.
+    </p>
+    <div class="row">
+      <input id="bookmarklet-worker-url" type="text" placeholder="Your plaid-bridge Worker URL (e.g. https://plaid-bridge.yoursubdomain.workers.dev)" style="flex:1" />
+    </div>
+    <div class="row">
+      <input id="bookmarklet-secret" type="password" placeholder="Your APP_SECRET" style="flex:1" />
+    </div>
+    <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never synced to Supabase or written into this file.</p>
+    <div class="row">
+      <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklet</button>
+    </div>
+    <div id="bookmarklet-output" style="margin-top:14px;display:none">
+      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Drag this link to your bookmarks bar:</p>
+      <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:10px">
+        <a id="bookmarklet-link" href="#" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">📌 Update Loyalty Balance</a>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">If dragging doesn't work, right-click your bookmarks bar → "Add page" → paste the link's URL manually.</p>
+    </div>
+  </div>
+
   </div>
 
   <div class="tab-panel" data-tab-panel="more">
@@ -782,6 +837,19 @@ let history = JSON.parse(localStorage.getItem('cc-tracker-history-v2') || 'null'
 let reserves = JSON.parse(localStorage.getItem('cc-tracker-reserves-v2') || 'null') || [];
 let rewards = JSON.parse(localStorage.getItem('cc-tracker-rewards-v2') || 'null') || [];
 let achievements = JSON.parse(localStorage.getItem('cc-tracker-achievements-v2') || 'null') || [];
+// Loyalty/points program balances. Fed two ways: manual/CSV entry here in the
+// app, or the desktop bookmarklet (see loyalty-bookmarklet-box) which POSTs
+// straight to plaid-bridge's /loyalty-update route while you're on a loyalty
+// site yourself -- no credentials stored anywhere, no scheduled automation.
+let loyaltyPrograms = JSON.parse(localStorage.getItem('cc-tracker-loyalty-v2') || 'null') || [];
+// Tombstones for deliberately-removed cards. Kept separate from `cards`
+// itself (which always holds only live cards, so none of the dozens of
+// existing `cards.filter/find` call sites need to change) purely so the
+// cloud-merge logic below can tell "this card is missing from the cloud
+// snapshot because it was just deleted" apart from "missing because a
+// Plaid sync raced a fresh local addition and pushed a stale copy" --
+// only the former should ever cause a card to actually disappear.
+let deletedCardIds = JSON.parse(localStorage.getItem('cc-tracker-deleted-card-ids-v2') || 'null') || [];
 const celebratedRaw = localStorage.getItem('cc-tracker-celebrated-v2');
 let celebrated = JSON.parse(celebratedRaw || 'null') || [];
 let manualLogFormForcedOpen = false;
@@ -790,7 +858,7 @@ if (celebratedRaw === null) {
   celebrated = cards.filter(c => c.balance <= 0.01).map(c => c.id);
 }
 // Migrate legacy 'hidden' flags (from earlier versions) to the new 'archived' flag
-[rewards, reserves].forEach(arr => arr.forEach(r => {
+[rewards, reserves, loyaltyPrograms].forEach(arr => arr.forEach(r => {
   if (r && r.hidden) { r.archived = true; delete r.hidden; }
 }));
 
@@ -855,6 +923,8 @@ function saveData() {
   localStorage.setItem('cc-tracker-celebrated-v2', JSON.stringify(celebrated));
   localStorage.setItem('cc-tracker-rewards-v2', JSON.stringify(rewards));
   localStorage.setItem('cc-tracker-achievements-v2', JSON.stringify(achievements));
+  localStorage.setItem('cc-tracker-loyalty-v2', JSON.stringify(loyaltyPrograms));
+  localStorage.setItem('cc-tracker-deleted-card-ids-v2', JSON.stringify(deletedCardIds));
   const ts = new Date().toISOString();
   localStorage.setItem('cc-tracker-data-ts', ts);
   scheduleCloudPush();
@@ -1000,6 +1070,7 @@ function renderCards() {
 
       if (btn.dataset.confirming === 'true') {
         cards = cards.filter(x => x.id !== cardId);
+        deletedCardIds.push(cardId);
         history.forEach(h => { if (h.cardId === cardId) h.deleted = true; });
         saveData();
         render();
@@ -3502,6 +3573,8 @@ function renderRewards() {
     });
   }
 
+  renderLoyaltyPrograms();
+
   if (!window.Chart) return;
   const cardsWithCashback = cards.filter(c => byCard[c.id] && byCard[c.id].cashback !== 0);
   const cashCtx = document.getElementById('rewards-cashback-chart');
@@ -3568,6 +3641,65 @@ function renderRewards() {
           x: { ticks: { color: '#9A9AAE', autoSkip: false, maxRotation: 20 }, grid: { display: false } }
         }
       }
+    });
+  }
+}
+
+// --- Loyalty / point-mile balance tracking (manual + CSV + bookmarklet) ---
+function daysSinceIso(iso) {
+  if (!iso) return Infinity;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+function renderLoyaltyPrograms() {
+  const list = document.getElementById('loyalty-list');
+  if (!list) return;
+  const active = [...loyaltyPrograms].filter(p => !p.deleted).sort((a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0));
+  if (active.length === 0) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No point/mile balances added yet.</p>';
+  } else {
+    list.innerHTML = active.map(p => {
+      const days = daysSinceIso(p.lastUpdated);
+      const stale = days >= 60;
+      const updatedText = p.lastUpdated ? (days === 0 ? 'today' : days === 1 ? '1 day ago' : days + ' days ago') : 'never updated';
+      const dollarValue = (p.valueCents != null) ? (p.balance || 0) * p.valueCents / 100 : null;
+      return `
+        <div class="loyalty-row">
+          <div>
+            <div class="ly-name">${esc(p.name)}</div>
+            <div class="ly-meta ${stale ? 'stale' : ''}">updated ${updatedText}${stale ? ' (stale)' : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div>
+              <div class="ly-amt">${Math.round(p.balance || 0).toLocaleString('en-US')} pts</div>
+              ${dollarValue != null ? `<div class="ly-meta" style="text-align:right">\u2248 ${fmt(dollarValue)}</div>` : ''}
+            </div>
+            <button class="hist-delete-btn" data-loyalty-id="${p.id}" aria-label="Remove this program" title="Delete this program">&times;</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('.hist-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.confirming === 'true') {
+          const p = loyaltyPrograms.find(x => String(x.id) === btn.getAttribute('data-loyalty-id'));
+          if (p) { p.deleted = true; saveData(); renderLoyaltyPrograms(); }
+          return;
+        }
+        btn.dataset.confirming = 'true';
+        btn.textContent = '\u2713';
+        btn.title = 'Click again to confirm';
+        btn.style.borderColor = 'var(--danger)';
+        btn.style.color = 'var(--danger)';
+        setTimeout(() => {
+          if (btn.dataset.confirming === 'true' && document.body.contains(btn)) {
+            btn.dataset.confirming = 'false';
+            btn.textContent = '\u00D7';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+          }
+        }, 3000);
+      });
     });
   }
 }
@@ -4124,6 +4256,154 @@ document.getElementById('rewards-reset-btn').addEventListener('click', () => {
   }, 3000);
 });
 
+document.getElementById('loyalty-add-btn').addEventListener('click', () => {
+  const nameInput = document.getElementById('loyalty-name');
+  const balanceInput = document.getElementById('loyalty-balance');
+  const valueInput = document.getElementById('loyalty-value');
+  const name = nameInput.value.trim();
+  const balance = parseFloat(balanceInput.value);
+  if (!name || isNaN(balance)) return;
+  const valueCents = valueInput.value ? parseFloat(valueInput.value) : null;
+  const existing = loyaltyPrograms.find(p => !p.deleted && p.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.balance = balance;
+    existing.lastUpdated = new Date().toISOString();
+    if (valueCents != null) existing.valueCents = valueCents;
+  } else {
+    loyaltyPrograms.push({
+      id: Date.now() + Math.random(), name, balance, valueCents,
+      cardId: null, lastUpdated: new Date().toISOString(), deleted: false
+    });
+  }
+  nameInput.value = '';
+  balanceInput.value = '';
+  valueInput.value = '';
+  saveData();
+  renderLoyaltyPrograms();
+});
+
+document.getElementById('loyalty-import-btn').addEventListener('click', () => {
+  const textarea = document.getElementById('loyalty-csv');
+  const statusEl = document.getElementById('loyalty-import-status');
+  const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+  let added = 0, updated = 0, skipped = 0;
+  lines.forEach(line => {
+    const parts = line.split(',').map(p => p.trim());
+    const name = parts[0];
+    const balance = parseFloat(parts[1]);
+    const dateStr = parts[2];
+    if (!name || isNaN(balance)) { skipped++; return; }
+    const lastUpdated = dateStr ? new Date(dateStr + 'T00:00:00').toISOString() : new Date().toISOString();
+    const existing = loyaltyPrograms.find(p => !p.deleted && p.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      existing.balance = balance;
+      existing.lastUpdated = lastUpdated;
+      updated++;
+    } else {
+      loyaltyPrograms.push({
+        id: Date.now() + Math.random() + added, name, balance, valueCents: null,
+        cardId: null, lastUpdated, deleted: false
+      });
+      added++;
+    }
+  });
+  statusEl.textContent = lines.length === 0
+    ? 'Paste some rows first.'
+    : `Imported: ${added} added, ${updated} updated${skipped ? `, ${skipped} skipped (couldn't parse)` : ''}.`;
+  if (added || updated) {
+    textarea.value = '';
+    saveData();
+    renderLoyaltyPrograms();
+  }
+});
+
+// Worker URL + secret used only to build the bookmarklet link -- deliberately
+// kept out of buildSyncPayload/saveData so it never syncs to Supabase or ends
+// up in this file's source. Local to this browser only.
+(function initBookmarkletFields() {
+  const urlInput = document.getElementById('bookmarklet-worker-url');
+  const secretInput = document.getElementById('bookmarklet-secret');
+  if (!urlInput || !secretInput) return;
+  urlInput.value = localStorage.getItem('cc-tracker-bookmarklet-url') || '';
+  secretInput.value = localStorage.getItem('cc-tracker-bookmarklet-secret') || '';
+})();
+
+document.getElementById('bookmarklet-generate-btn').addEventListener('click', () => {
+  const urlInput = document.getElementById('bookmarklet-worker-url');
+  const secretInput = document.getElementById('bookmarklet-secret');
+  const workerUrl = urlInput.value.trim().replace(/\/$/, '');
+  const secret = secretInput.value.trim();
+  if (!workerUrl || !secret) {
+    alert('Enter both your Worker URL and APP_SECRET first.');
+    return;
+  }
+  localStorage.setItem('cc-tracker-bookmarklet-url', workerUrl);
+  localStorage.setItem('cc-tracker-bookmarklet-secret', secret);
+
+  // Built with string concatenation (not a template literal) so the secret and
+  // URL are spliced in as plain JS string literals inside the bookmarklet code.
+  // Multi-line prompt text is built with String.fromCharCode(10) at bookmarklet
+  // runtime rather than "\n" escapes here, to avoid the two layers of JS
+  // (this page's script, and the bookmarklet's own source) fighting over how
+  // an escape sequence should be interpreted.
+  const code = "(function(){"
+    + "var NL=String.fromCharCode(10);"
+    + "var WORKER=" + JSON.stringify(workerUrl) + ";"
+    + "var SECRET=" + JSON.stringify(secret) + ";"
+    + "var isCard=confirm('Click OK to log a CARD balance (e.g. a Discover stopgap). Click Cancel to log a POINTS or miles balance instead.');"
+    + "if(isCard){"
+    + "fetch(WORKER+'/cards-list',{headers:{'x-app-secret':SECRET}}).then(function(r){return r.json();}).then(function(d){"
+    + "if(!d.ok){alert('Could not load your card list: '+(d.error||'unknown error'));return;}"
+    + "var names=d.cards.map(function(c){return c.name;});"
+    + "var listText=names.map(function(n,i){return (i+1)+'. '+n;}).join(NL);"
+    + "document.body.style.cursor='crosshair';"
+    + "var handler=function(e){"
+    + "e.preventDefault();e.stopPropagation();"
+    + "document.removeEventListener('click',handler,true);"
+    + "document.body.style.cursor='';"
+    + "var t=(e.target.innerText||e.target.textContent||'').replace(/,/g,'');"
+    + "var m=t.match(/[0-9]+(\\.[0-9]+)?/);"
+    + "if(!m){alert('No number found there \u2014 try clicking directly on the balance text.');return;}"
+    + "var balance=m[0];"
+    + "var pick=prompt('Which card number is this?'+NL+NL+listText);"
+    + "var idx=parseInt(pick,10)-1;"
+    + "if(isNaN(idx)||idx<0||idx>=names.length){alert('Not a valid number \u2014 cancelled.');return;}"
+    + "var cardName=names[idx];"
+    + "var dueDate=prompt('Due date for this statement? (YYYY-MM-DD, leave blank to skip)','');"
+    + "var stmtBal=prompt('Statement balance? (leave blank to skip)','');"
+    + "fetch(WORKER+'/card-update',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':SECRET},body:JSON.stringify({cardName:cardName,balance:parseFloat(balance),dueDate:dueDate||null,statementBalance:stmtBal?parseFloat(stmtBal):null})})"
+    + ".then(function(r){return r.json();}).then(function(d2){"
+    + "alert(d2.ok?('Updated '+d2.card+': balance '+d2.balance+(d2.dueDate?(', due '+d2.dueDate):'')+(d2.statementBalance!=null?(', statement '+d2.statementBalance):'')):('Error: '+(d2.error||'unknown')));"
+    + "}).catch(function(err){alert('Error: '+err.message);});"
+    + "};"
+    + "alert('Now click the BALANCE number on this page.');"
+    + "document.addEventListener('click',handler,true);"
+    + "}).catch(function(err){alert('Error loading your cards: '+err.message);});"
+    + "}else{"
+    + "document.body.style.cursor='crosshair';"
+    + "var handler2=function(e){"
+    + "e.preventDefault();e.stopPropagation();"
+    + "document.removeEventListener('click',handler2,true);"
+    + "document.body.style.cursor='';"
+    + "var t2=(e.target.innerText||e.target.textContent||'').replace(/,/g,'');"
+    + "var m2=t2.match(/[0-9]+(\\.[0-9]+)?/);"
+    + "if(!m2){alert('No number found there \u2014 try clicking directly on the balance text.');return;}"
+    + "var program=prompt('Program name?','');"
+    + "if(!program)return;"
+    + "fetch(WORKER+'/loyalty-update',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':SECRET},body:JSON.stringify({program:program,balance:parseFloat(m2[0])})})"
+    + ".then(function(r){return r.json();}).then(function(d3){alert(d3.ok?('Sent: '+program+' = '+m2[0]):('Error: '+(d3.error||'unknown')));})"
+    + ".catch(function(err){alert('Error: '+err.message);});"
+    + "};"
+    + "alert('Click the balance number on this page.');"
+    + "document.addEventListener('click',handler2,true);"
+    + "}"
+    + "})();";
+
+  const link = document.getElementById('bookmarklet-link');
+  link.setAttribute('href', 'javascript:' + code);
+  document.getElementById('bookmarklet-output').style.display = 'block';
+});
+
 document.getElementById('card-sort-select').addEventListener('change', () => {
   renderCards();
 });
@@ -4322,7 +4602,7 @@ function setSyncConfig(cfg) {
 }
 
 function buildSyncPayload() {
-  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt };
+  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds };
 }
 
 function mergeArraysById(localArr, cloudArr) {
@@ -4436,12 +4716,39 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     const cloudPayload = row.payload || {};
     let changed = false;
 
-    // Cards are mutable running balances, not a log — safe to replace wholesale,
-    // but only when the cloud copy is genuinely newer than what we have.
-    if (applyIfNewer && (!localTs || new Date(cloudTs) > new Date(localTs)) && Array.isArray(cloudPayload.cards)) {
-      cards = cloudPayload.cards;
-      changed = true;
+    // Cards used to be replaced wholesale from whichever side had the newer
+    // timestamp -- but a Plaid sync's pull-modify-push cycle can itself lag
+    // behind a fresh local addition, so "newer overall" doesn't guarantee
+    // "has every card." Deletions are tracked as explicit tombstones
+    // (deletedCardIds) precisely so presence/absence in a snapshot never has
+    // to be trusted as a deletion signal on its own -- only a tombstone does.
+    const mergedDeletedCardIds = Array.from(new Set([...(deletedCardIds || []), ...(cloudPayload.deletedCardIds || [])]));
+    if (Array.isArray(cloudPayload.cards)) {
+      const cloudCards = cloudPayload.cards;
+      const cloudIsNewer = applyIfNewer && (!localTs || new Date(cloudTs) > new Date(localTs));
+      let mergedCards;
+      if (cloudIsNewer) {
+        // Cloud is chronologically ahead -- trust its field values for any
+        // card id it has, but keep any card that exists locally and is
+        // simply missing from this cloud snapshot (a race, not a deletion),
+        // unless it's explicitly tombstoned.
+        const cloudIds = new Set(cloudCards.map(c => c.id));
+        const localOnly = cards.filter(c => !cloudIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
+        mergedCards = [...cloudCards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...localOnly];
+      } else {
+        // Local is at least as fresh -- keep local field values, but still
+        // adopt any card that exists in the cloud but not locally yet (e.g.
+        // added on another device whose push we haven't seen here), and
+        // still honor deletions from either side.
+        const localIds = new Set(cards.map(c => c.id));
+        const cloudOnly = cloudCards.filter(c => !localIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
+        mergedCards = [...cards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...cloudOnly];
+      }
+      if (JSON.stringify(mergedCards) !== JSON.stringify(cards)) changed = true;
+      cards = mergedCards;
     }
+    if (mergedDeletedCardIds.length !== (deletedCardIds || []).length) changed = true;
+    deletedCardIds = mergedDeletedCardIds;
 
     // Everything else is a log of individually-identified entries — merge by id
     // instead of overwriting, so an entry added on one device is never silently
@@ -4450,6 +4757,7 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     const mergedReserves = mergeArraysById(reserves, cloudPayload.reserves);
     const mergedRewards = mergeArraysById(rewards, cloudPayload.rewards);
     const mergedAchievements = mergeArraysById(achievements, cloudPayload.achievements);
+    const mergedLoyaltyPrograms = mergeArraysById(loyaltyPrograms, cloudPayload.loyaltyPrograms);
     const mergedCelebrated = Array.from(new Set([...(celebrated || []), ...(cloudPayload.celebrated || [])]));
     if (cloudPayload.lastOpenedAt && new Date(cloudPayload.lastOpenedAt) > new Date(lastOpenedAt)) {
       lastOpenedAt = cloudPayload.lastOpenedAt;
@@ -4460,12 +4768,14 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     if (JSON.stringify(mergedRewards) !== JSON.stringify(rewards)) changed = true;
     if (mergedAchievements.length !== achievements.length) changed = true;
     if (mergedCelebrated.length !== celebrated.length) changed = true;
+    if (JSON.stringify(mergedLoyaltyPrograms) !== JSON.stringify(loyaltyPrograms)) changed = true;
 
     history = mergedHistory;
     reserves = mergedReserves;
     rewards = mergedRewards;
     achievements = mergedAchievements;
     celebrated = mergedCelebrated;
+    loyaltyPrograms = mergedLoyaltyPrograms;
 
     if (changed) {
       saveData(); // persists locally and schedules pushing the merged (now-complete) set back up
