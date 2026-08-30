@@ -677,7 +677,7 @@
   <div class="form-box" id="loyalty-bookmarklet-box">
     <p>Auto-update via bookmarklet (desktop Chrome)</p>
     <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
-      Click this while logged into a bank or loyalty site yourself, then click a number on the page — it sends that straight to your tracker. Works for both card balances (e.g. a stopgap for Discover, whose Plaid data hasn't populated yet) and points/miles balances. Nothing is stored or automated; it only runs the moment you click it.
+      Two separate bookmarks, so you can't accidentally pick the wrong one. Click one while logged into a bank or loyalty site yourself, then click a number on the page. Nothing is stored or automated; it only runs the moment you click it.
     </p>
     <div class="row">
       <input id="bookmarklet-worker-url" type="text" placeholder="Your plaid-bridge Worker URL (e.g. https://plaid-bridge.yoursubdomain.workers.dev)" style="flex:1" />
@@ -687,12 +687,13 @@
     </div>
     <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never synced to Supabase or written into this file.</p>
     <div class="row">
-      <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklet</button>
+      <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklets</button>
     </div>
     <div id="bookmarklet-output" style="margin-top:14px;display:none">
-      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Drag this link to your bookmarks bar:</p>
-      <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:10px">
-        <a id="bookmarklet-link" href="#" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">📌 Update Loyalty Balance</a>
+      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Drag both links to your bookmarks bar:</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:10px">
+        <a id="bookmarklet-link-card" href="#" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">💳 Update Card Balance</a>
+        <a id="bookmarklet-link-points" href="#" style="display:inline-block;padding:8px 16px;background:var(--success);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">🎯 Update Points Balance</a>
       </div>
       <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">If dragging doesn't work, right-click your bookmarks bar → "Add page" → paste the link's URL manually.</p>
     </div>
@@ -768,6 +769,13 @@
   <div class="form-box" id="plaid-box">
     <p>Connect your bank (experimental)</p>
     <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand.</p>
+    <div id="plaid-secret-setup">
+      <div class="row">
+        <input id="plaid-app-secret-input" type="password" placeholder="Your plaid-bridge Worker's APP_SECRET" style="flex:1" />
+        <button id="plaid-app-secret-save-btn">Save</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never in this file, never synced to Supabase. You'll need to re-enter it on each new device/browser.</p>
+    </div>
     <div class="row">
       <button class="primary" id="plaid-connect-btn">Connect your bank</button>
       <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
@@ -4346,12 +4354,10 @@ document.getElementById('bookmarklet-generate-btn').addEventListener('click', ()
   // runtime rather than "\n" escapes here, to avoid the two layers of JS
   // (this page's script, and the bookmarklet's own source) fighting over how
   // an escape sequence should be interpreted.
-  const code = "(function(){"
+  const cardCode = "(function(){"
     + "var NL=String.fromCharCode(10);"
     + "var WORKER=" + JSON.stringify(workerUrl) + ";"
     + "var SECRET=" + JSON.stringify(secret) + ";"
-    + "var isCard=confirm('Click OK to log a CARD balance (e.g. a Discover stopgap). Click Cancel to log a POINTS or miles balance instead.');"
-    + "if(isCard){"
     + "fetch(WORKER+'/cards-list',{headers:{'x-app-secret':SECRET}}).then(function(r){return r.json();}).then(function(d){"
     + "if(!d.ok){alert('Could not load your card list: '+(d.error||'unknown error'));return;}"
     + "var names=d.cards.map(function(c){return c.name;});"
@@ -4365,7 +4371,7 @@ document.getElementById('bookmarklet-generate-btn').addEventListener('click', ()
     + "var m=t.match(/[0-9]+(\\.[0-9]+)?/);"
     + "if(!m){alert('No number found there \u2014 try clicking directly on the balance text.');return;}"
     + "var balance=m[0];"
-    + "var pick=prompt('Which card number is this?'+NL+NL+listText);"
+    + "var pick=prompt('CARD BALANCE'+NL+'Which card is this ('+balance+')?'+NL+NL+listText);"
     + "var idx=parseInt(pick,10)-1;"
     + "if(isNaN(idx)||idx<0||idx>=names.length){alert('Not a valid number \u2014 cancelled.');return;}"
     + "var cardName=names[idx];"
@@ -4376,31 +4382,34 @@ document.getElementById('bookmarklet-generate-btn').addEventListener('click', ()
     + "alert(d2.ok?('Updated '+d2.card+': balance '+d2.balance+(d2.dueDate?(', due '+d2.dueDate):'')+(d2.statementBalance!=null?(', statement '+d2.statementBalance):'')):('Error: '+(d2.error||'unknown')));"
     + "}).catch(function(err){alert('Error: '+err.message);});"
     + "};"
-    + "alert('Now click the BALANCE number on this page.');"
+    + "alert('CARD BALANCE'+NL+'Now click the BALANCE number on this page.');"
     + "document.addEventListener('click',handler,true);"
     + "}).catch(function(err){alert('Error loading your cards: '+err.message);});"
-    + "}else{"
-    + "document.body.style.cursor='crosshair';"
-    + "var handler2=function(e){"
-    + "e.preventDefault();e.stopPropagation();"
-    + "document.removeEventListener('click',handler2,true);"
-    + "document.body.style.cursor='';"
-    + "var t2=(e.target.innerText||e.target.textContent||'').replace(/,/g,'');"
-    + "var m2=t2.match(/[0-9]+(\\.[0-9]+)?/);"
-    + "if(!m2){alert('No number found there \u2014 try clicking directly on the balance text.');return;}"
-    + "var program=prompt('Program name?','');"
-    + "if(!program)return;"
-    + "fetch(WORKER+'/loyalty-update',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':SECRET},body:JSON.stringify({program:program,balance:parseFloat(m2[0])})})"
-    + ".then(function(r){return r.json();}).then(function(d3){alert(d3.ok?('Sent: '+program+' = '+m2[0]):('Error: '+(d3.error||'unknown')));})"
-    + ".catch(function(err){alert('Error: '+err.message);});"
-    + "};"
-    + "alert('Click the balance number on this page.');"
-    + "document.addEventListener('click',handler2,true);"
-    + "}"
     + "})();";
 
-  const link = document.getElementById('bookmarklet-link');
-  link.setAttribute('href', 'javascript:' + code);
+  const pointsCode = "(function(){"
+    + "var WORKER=" + JSON.stringify(workerUrl) + ";"
+    + "var SECRET=" + JSON.stringify(secret) + ";"
+    + "document.body.style.cursor='crosshair';"
+    + "var handler=function(e){"
+    + "e.preventDefault();e.stopPropagation();"
+    + "document.removeEventListener('click',handler,true);"
+    + "document.body.style.cursor='';"
+    + "var t=(e.target.innerText||e.target.textContent||'').replace(/,/g,'');"
+    + "var m=t.match(/[0-9]+(\\.[0-9]+)?/);"
+    + "if(!m){alert('No number found there \u2014 try clicking directly on the balance text.');return;}"
+    + "var program=prompt('POINTS / MILES BALANCE'+String.fromCharCode(10)+'Program name?','');"
+    + "if(!program)return;"
+    + "fetch(WORKER+'/loyalty-update',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':SECRET},body:JSON.stringify({program:program,balance:parseFloat(m[0])})})"
+    + ".then(function(r){return r.json();}).then(function(d){alert(d.ok?('Sent: '+program+' = '+m[0]):('Error: '+(d.error||'unknown')));})"
+    + ".catch(function(err){alert('Error: '+err.message);});"
+    + "};"
+    + "alert('POINTS / MILES BALANCE'+String.fromCharCode(10)+'Click the balance number on this page.');"
+    + "document.addEventListener('click',handler,true);"
+    + "})();";
+
+  document.getElementById('bookmarklet-link-card').setAttribute('href', 'javascript:' + cardCode);
+  document.getElementById('bookmarklet-link-points').setAttribute('href', 'javascript:' + pointsCode);
   document.getElementById('bookmarklet-output').style.display = 'block';
 });
 
@@ -4818,16 +4827,39 @@ function renderSyncUI() {
 }
 
 const PLAID_BRIDGE_URL = 'https://plaid-bridge.leonrichard074.workers.dev';
-// Shared secret required by plaid-bridge on every request -- without it, the
-// Worker rejects the call before touching Plaid or Supabase at all. This is
-// visible to anyone who views this page's source, so it isn't airtight, but
-// it blocks the realistic threat: someone stumbling on the Worker's URL and
-// poking at it directly with no context.
-const PLAID_APP_SECRET = 'Marialeon123@';
+// Shared secret required by plaid-bridge on every request. This used to be
+// hardcoded here, which meant it shipped in plain text in this file's public
+// source -- anyone who viewed-source on the live site could read it and hit
+// the Worker directly (trigger syncs, disconnect banks, push fake data).
+// Now it's entered once per browser and kept only in that browser's
+// localStorage, the same pattern used for the bookmarklet's own secret field.
+function getPlaidAppSecret() {
+  return localStorage.getItem('cc-tracker-plaid-app-secret') || '';
+}
 
 function plaidFetchHeaders(extra) {
-  return { 'x-app-secret': PLAID_APP_SECRET, ...(extra || {}) };
+  return { 'x-app-secret': getPlaidAppSecret(), ...(extra || {}) };
 }
+
+function refreshPlaidSecretSetupUI() {
+  const setupBox = document.getElementById('plaid-secret-setup');
+  const hasSecret = !!getPlaidAppSecret();
+  const connectBtn = document.getElementById('plaid-connect-btn');
+  const syncBtn = document.getElementById('plaid-sync-btn');
+  const refreshBtn = document.getElementById('plaid-refresh-connections-btn');
+  setupBox.style.display = hasSecret ? 'none' : 'block';
+  [connectBtn, syncBtn, refreshBtn].forEach(btn => { btn.disabled = !hasSecret; });
+}
+
+document.getElementById('plaid-app-secret-save-btn').addEventListener('click', () => {
+  const input = document.getElementById('plaid-app-secret-input');
+  const value = input.value.trim();
+  if (!value) { alert('Enter your APP_SECRET first.'); return; }
+  localStorage.setItem('cc-tracker-plaid-app-secret', value);
+  input.value = '';
+  refreshPlaidSecretSetupUI();
+  syncPlaidConnectedFlagWithReality();
+});
 
 function setPlaidStatus(text, isError) {
   const el = document.getElementById('plaid-status');
@@ -4851,6 +4883,7 @@ function refreshPlaidButtonState() {
 // correctly shows Sync/Disconnect if a real connection already exists,
 // instead of always defaulting to "not connected."
 async function syncPlaidConnectedFlagWithReality() {
+  if (!getPlaidAppSecret()) return; // nothing to check yet -- no secret entered
   try {
     const res = await fetch(`${PLAID_BRIDGE_URL}/connections`, { headers: plaidFetchHeaders() });
     const data = await res.json();
@@ -4871,6 +4904,7 @@ async function syncPlaidConnectedFlagWithReality() {
 }
 
 document.getElementById('plaid-connect-btn').addEventListener('click', async () => {
+  if (!getPlaidAppSecret()) { alert('Enter your APP_SECRET above first.'); return; }
   const btn = document.getElementById('plaid-connect-btn');
   btn.disabled = true;
   setPlaidStatus('Connecting to Plaid…');
@@ -4920,6 +4954,7 @@ document.getElementById('plaid-connect-btn').addEventListener('click', async () 
 });
 
 document.getElementById('plaid-sync-btn').addEventListener('click', async () => {
+  if (!getPlaidAppSecret()) { alert('Enter your APP_SECRET above first.'); return; }
   const btn = document.getElementById('plaid-sync-btn');
   btn.disabled = true;
   setPlaidStatus('Pulling your latest balances…');
@@ -4962,6 +4997,7 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
 });
 
 refreshPlaidButtonState();
+refreshPlaidSecretSetupUI();
 syncPlaidConnectedFlagWithReality();
 
 document.getElementById('manual-log-toggle-btn').addEventListener('click', () => {
@@ -4970,6 +5006,7 @@ document.getElementById('manual-log-toggle-btn').addEventListener('click', () =>
 });
 
 document.getElementById('plaid-disconnect-btn').addEventListener('click', async () => {
+  if (!getPlaidAppSecret()) { alert('Enter your APP_SECRET above first.'); return; }
   const btn = document.getElementById('plaid-disconnect-btn');
   if (btn.dataset.confirming !== 'true') {
     btn.dataset.confirming = 'true';
@@ -5068,6 +5105,7 @@ async function renderPlaidConnectionsList() {
 }
 
 document.getElementById('plaid-refresh-connections-btn').addEventListener('click', () => {
+  if (!getPlaidAppSecret()) { alert('Enter your APP_SECRET above first.'); return; }
   const btn = document.getElementById('plaid-refresh-connections-btn');
   const box = document.getElementById('plaid-connections-list');
   const isCurrentlyShown = box.innerHTML.trim().length > 0;
