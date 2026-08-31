@@ -679,13 +679,9 @@
     <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
       Two separate bookmarks, so you can't accidentally pick the wrong one. Click one while logged into a bank or loyalty site yourself, then click a number on the page. Nothing is stored or automated; it only runs the moment you click it.
     </p>
-    <div class="row">
-      <input id="bookmarklet-worker-url" type="text" placeholder="Your plaid-bridge Worker URL (e.g. https://plaid-bridge.yoursubdomain.workers.dev)" style="flex:1" />
-    </div>
-    <div class="row">
-      <input id="bookmarklet-secret" type="password" placeholder="Your APP_SECRET" style="flex:1" />
-    </div>
-    <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never synced to Supabase or written into this file.</p>
+    <p id="bookmarklet-secret-missing" style="font-size:12.5px;color:var(--danger);margin:0 0 12px;display:none">
+      Enter your APP_SECRET in the "Connect your bank" box (More tab) first — the bookmarklet reuses that same secret.
+    </p>
     <div class="row">
       <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklets</button>
     </div>
@@ -4325,28 +4321,15 @@ document.getElementById('loyalty-import-btn').addEventListener('click', () => {
   }
 });
 
-// Worker URL + secret used only to build the bookmarklet link -- deliberately
-// kept out of buildSyncPayload/saveData so it never syncs to Supabase or ends
-// up in this file's source. Local to this browser only.
-(function initBookmarkletFields() {
-  const urlInput = document.getElementById('bookmarklet-worker-url');
-  const secretInput = document.getElementById('bookmarklet-secret');
-  if (!urlInput || !secretInput) return;
-  urlInput.value = localStorage.getItem('cc-tracker-bookmarklet-url') || '';
-  secretInput.value = localStorage.getItem('cc-tracker-bookmarklet-secret') || '';
-})();
-
 document.getElementById('bookmarklet-generate-btn').addEventListener('click', () => {
-  const urlInput = document.getElementById('bookmarklet-worker-url');
-  const secretInput = document.getElementById('bookmarklet-secret');
-  const workerUrl = urlInput.value.trim().replace(/\/$/, '');
-  const secret = secretInput.value.trim();
-  if (!workerUrl || !secret) {
-    alert('Enter both your Worker URL and APP_SECRET first.');
+  const workerUrl = PLAID_BRIDGE_URL;
+  const secret = getPlaidAppSecret();
+  if (!secret) {
+    document.getElementById('bookmarklet-secret-missing').style.display = 'block';
+    document.getElementById('bookmarklet-output').style.display = 'none';
     return;
   }
-  localStorage.setItem('cc-tracker-bookmarklet-url', workerUrl);
-  localStorage.setItem('cc-tracker-bookmarklet-secret', secret);
+  document.getElementById('bookmarklet-secret-missing').style.display = 'none';
 
   // Built with string concatenation (not a template literal) so the secret and
   // URL are spliced in as plain JS string literals inside the bookmarklet code.
@@ -4611,7 +4594,7 @@ function setSyncConfig(cfg) {
 }
 
 function buildSyncPayload() {
-  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds };
+  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds, plaidAppSecret: getPlaidAppSecret() };
 }
 
 function mergeArraysById(localArr, cloudArr) {
@@ -4759,6 +4742,21 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     if (mergedDeletedCardIds.length !== (deletedCardIds || []).length) changed = true;
     deletedCardIds = mergedDeletedCardIds;
 
+    // Plaid APP_SECRET: synced so it survives a cleared browser and doesn't
+    // need re-entering on every device, at the cost of living in the same
+    // Supabase row as the rest of your data (same trust boundary as your
+    // balances already sit behind -- not shipped in the public page source
+    // the way it used to be). Adopt cloud's value if we don't have one
+    // locally yet, or if cloud is newer and genuinely different.
+    if (cloudPayload.plaidAppSecret) {
+      const localSecret = getPlaidAppSecret();
+      const cloudIsNewerForSecret = applyIfNewer && (!localTs || new Date(cloudTs) > new Date(localTs));
+      if (!localSecret || (cloudIsNewerForSecret && cloudPayload.plaidAppSecret !== localSecret)) {
+        localStorage.setItem('cc-tracker-plaid-app-secret', cloudPayload.plaidAppSecret);
+        if (typeof refreshPlaidSecretSetupUI === 'function') refreshPlaidSecretSetupUI();
+      }
+    }
+
     // Everything else is a log of individually-identified entries — merge by id
     // instead of overwriting, so an entry added on one device is never silently
     // discarded by a save from the other device.
@@ -4859,6 +4857,9 @@ document.getElementById('plaid-app-secret-save-btn').addEventListener('click', (
   input.value = '';
   refreshPlaidSecretSetupUI();
   syncPlaidConnectedFlagWithReality();
+  // Push it to Supabase too, so it survives a cleared browser and doesn't
+  // need re-entering on other devices.
+  saveData();
 });
 
 function setPlaidStatus(text, isError) {
