@@ -2792,6 +2792,11 @@ function renderPlanner(amount) {
       ? `<span style="color:var(--success);font-weight:600">${p.effectiveApr}% promo APR</span> (${p.apr}% regular, until ${new Date(p.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
       : p.apr == null ? 'APR unknown' : `${p.apr}% APR`;
     const fundingAttr = esc(JSON.stringify(p.funding || []));
+    const sourceCard = cards.find(c => c.id === p.id);
+    const currentCardBalance = sourceCard ? sourceCard.balance : null;
+    const balanceAfterLine = currentCardBalance != null
+      ? `<div class="pnote" style="margin-top:3px;color:var(--text-muted)">${fmt(currentCardBalance)} \u2192 ${p.payoff ? '<span style="color:var(--success);font-weight:600">$0.00 (paid off)</span>' : fmt(Math.max(0, currentCardBalance - p.amount))}</div>`
+      : '';
     html += `
       <div class="planner-row" style="--card-color:${p.color}">
         <div class="planner-row-main">
@@ -2800,6 +2805,7 @@ function renderPlanner(amount) {
             <div class="pname">${esc(p.name)}</div>
             <div class="pnote">${aprLabel}${p.payoff ? ' · pays off this card' : ''}</div>
             ${fundingLine}
+            ${balanceAfterLine}
           </div>
         </div>
         <div class="planner-row-right">
@@ -2809,7 +2815,11 @@ function renderPlanner(amount) {
       </div>
     `;
   });
-  html += `<div class="planner-total"><span>Total allocated</span><span>${fmt(amount - result.leftover)}</span></div>`;
+  const allocated = amount - result.leftover;
+  const currentTotalOwed = totalOwed();
+  html += `<div class="planner-total"><span>Total allocated</span><span>${fmt(allocated)}</span></div>`;
+  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:12.5px;color:var(--text-muted)"><span>Total owed across all cards (right now)</span><span>${fmt(currentTotalOwed)}</span></div>`;
+  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:12.5px;color:var(--text-muted)"><span>Remaining after this payment</span><span>${fmt(Math.max(0, currentTotalOwed - allocated))}</span></div>`;
   if (result.leftover > 0.005) {
     html += `<p class="pnote" style="margin-top:6px">All cards paid off, ${fmt(result.leftover)} left over.</p>`;
   }
