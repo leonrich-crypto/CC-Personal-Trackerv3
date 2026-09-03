@@ -778,6 +778,7 @@
       <button id="plaid-refresh-connections-btn" style="display:none">Show connected banks</button>
     </div>
     <p id="plaid-status" style="font-size:12px;color:var(--text-secondary);margin:10px 0 0"></p>
+    <p id="plaid-last-sync" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0"></p>
     <div id="plaid-sync-details" style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
     <div id="plaid-connections-list" style="margin:10px 0 0;display:flex;flex-direction:column;gap:6px"></div>
     <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
@@ -858,6 +859,10 @@ const celebratedRaw = localStorage.getItem('cc-tracker-celebrated-v2');
 let celebrated = JSON.parse(celebratedRaw || 'null') || [];
 let manualLogFormForcedOpen = false;
 let lastOpenedAt = new Date().toISOString();
+// When plaid-bridge last actually pulled from Plaid (not just when the app
+// last synced with Supabase) -- lets the diagnostic panel and the Plaid box
+// show "as of" info instead of leaving you guessing how fresh the numbers are.
+let lastPlaidSyncAt = localStorage.getItem('cc-tracker-last-plaid-sync-at') || null;
 if (celebratedRaw === null) {
   celebrated = cards.filter(c => c.balance <= 0.01).map(c => c.id);
 }
@@ -929,6 +934,7 @@ function saveData() {
   localStorage.setItem('cc-tracker-achievements-v2', JSON.stringify(achievements));
   localStorage.setItem('cc-tracker-loyalty-v2', JSON.stringify(loyaltyPrograms));
   localStorage.setItem('cc-tracker-deleted-card-ids-v2', JSON.stringify(deletedCardIds));
+  if (lastPlaidSyncAt) localStorage.setItem('cc-tracker-last-plaid-sync-at', lastPlaidSyncAt);
   const ts = new Date().toISOString();
   localStorage.setItem('cc-tracker-data-ts', ts);
   scheduleCloudPush();
@@ -4604,7 +4610,7 @@ function setSyncConfig(cfg) {
 }
 
 function buildSyncPayload() {
-  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds, plaidAppSecret: getPlaidAppSecret() };
+  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds, plaidAppSecret: getPlaidAppSecret(), lastPlaidSyncAt };
 }
 
 function mergeArraysById(localArr, cloudArr) {
@@ -4779,6 +4785,10 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     if (cloudPayload.lastOpenedAt && new Date(cloudPayload.lastOpenedAt) > new Date(lastOpenedAt)) {
       lastOpenedAt = cloudPayload.lastOpenedAt;
     }
+    if (cloudPayload.lastPlaidSyncAt && (!lastPlaidSyncAt || new Date(cloudPayload.lastPlaidSyncAt) > new Date(lastPlaidSyncAt))) {
+      lastPlaidSyncAt = cloudPayload.lastPlaidSyncAt;
+      localStorage.setItem('cc-tracker-last-plaid-sync-at', lastPlaidSyncAt);
+    }
 
     if (JSON.stringify(mergedHistory) !== JSON.stringify(history)) changed = true;
     if (JSON.stringify(mergedReserves) !== JSON.stringify(reserves)) changed = true;
@@ -4886,6 +4896,18 @@ function refreshPlaidButtonState() {
   document.getElementById('plaid-refresh-connections-btn').textContent = 'Show connected banks';
   document.getElementById('plaid-connections-list').innerHTML = '';
   document.getElementById('plaid-disconnect-wrap').style.display = connected ? 'block' : 'none';
+  refreshLastPlaidSyncDisplay();
+}
+
+// Shows when plaid-bridge last actually pulled fresh numbers from Plaid --
+// separate from "Synced X ago" elsewhere in the app, which only means this
+// device's local data matches Supabase, not that Supabase's numbers are new.
+function refreshLastPlaidSyncDisplay() {
+  const el = document.getElementById('plaid-last-sync');
+  if (!el) return;
+  el.textContent = lastPlaidSyncAt
+    ? `Last pulled from Plaid: ${timeAgo(lastPlaidSyncAt)}`
+    : '';
 }
 
 // The "connected" flag above is only ever local to this one browser/device --
@@ -4987,13 +5009,16 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
       } else {
         setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary}. Set up "Sync across devices" above with the same sync code to see it here.${errNote}`, !!errNote);
       }
+      refreshLastPlaidSyncDisplay();
       if (data.connectionDetails && data.connectionDetails.length) {
         const detailsBox = document.getElementById('plaid-sync-details');
         detailsBox.style.display = 'block';
-        detailsBox.textContent = data.connectionDetails.map(d => {
-          const balLines = (d.creditAccountBalances || []).map(b =>
-            `    ${b.name}: Plaid says balance = ${b.balanceFromPlaid != null ? '$' + b.balanceFromPlaid.toFixed(2) : 'null'}`
-          ).join('\n');
+        const asOfLine = data.syncedAt ? `As of this pull: ${new Date(data.syncedAt).toLocaleString('en-US')}\n\n` : '';
+        detailsBox.textContent = asOfLine + data.connectionDetails.map(d => {
+          const balLines = (d.creditAccountBalances || []).map(b => {
+            const plaidTs = b.plaidLastUpdated ? ` (Plaid last updated this account: ${new Date(b.plaidLastUpdated).toLocaleString('en-US')})` : '';
+            return `    ${b.name}: Plaid says balance = ${b.balanceFromPlaid != null ? '$' + b.balanceFromPlaid.toFixed(2) : 'null'}${plaidTs}`;
+          }).join('\n');
           return `${d.institution}: ${d.creditAccountsFound} credit card(s) found out of ${d.totalAccountsOnItem} account(s) on this connection\n  Account types seen: ${d.accountTypesSeen.join(', ') || '(none)'}${balLines ? '\n' + balLines : ''}`;
         }).join('\n\n');
       }
