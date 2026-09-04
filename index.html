@@ -786,6 +786,14 @@
     </p>
   </div>
 
+  <div class="form-box" id="deleted-cards-box" style="display:none">
+    <p>Deleted cards</p>
+    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
+      Cards you've removed. If one was deleted by mistake, restore it here — otherwise Plaid will never re-add it, even if the bank connection is still active.
+    </p>
+    <div id="deleted-cards-list"></div>
+  </div>
+
   <p class="footer-note">
     Saved locally in this browser only.
     <button class="reset-link" id="undo-btn">Undo last entry</button>
@@ -855,6 +863,10 @@ let loyaltyPrograms = JSON.parse(localStorage.getItem('cc-tracker-loyalty-v2') |
 // Plaid sync raced a fresh local addition and pushed a stale copy" --
 // only the former should ever cause a card to actually disappear.
 let deletedCardIds = JSON.parse(localStorage.getItem('cc-tracker-deleted-card-ids-v2') || 'null') || [];
+// Human-readable names for entries in deletedCardIds, purely for display in
+// the "Deleted cards" restore UI -- deletedCardIds itself stays a plain array
+// of ids everywhere else (Worker checks, merge logic) for backward compatibility.
+let deletedCardNames = JSON.parse(localStorage.getItem('cc-tracker-deleted-card-names-v2') || 'null') || {};
 const celebratedRaw = localStorage.getItem('cc-tracker-celebrated-v2');
 let celebrated = JSON.parse(celebratedRaw || 'null') || [];
 let manualLogFormForcedOpen = false;
@@ -934,6 +946,7 @@ function saveData() {
   localStorage.setItem('cc-tracker-achievements-v2', JSON.stringify(achievements));
   localStorage.setItem('cc-tracker-loyalty-v2', JSON.stringify(loyaltyPrograms));
   localStorage.setItem('cc-tracker-deleted-card-ids-v2', JSON.stringify(deletedCardIds));
+  localStorage.setItem('cc-tracker-deleted-card-names-v2', JSON.stringify(deletedCardNames));
   if (lastPlaidSyncAt) localStorage.setItem('cc-tracker-last-plaid-sync-at', lastPlaidSyncAt);
   const ts = new Date().toISOString();
   localStorage.setItem('cc-tracker-data-ts', ts);
@@ -1081,6 +1094,7 @@ function renderCards() {
       if (btn.dataset.confirming === 'true') {
         cards = cards.filter(x => x.id !== cardId);
         deletedCardIds.push(cardId);
+        deletedCardNames[cardId] = c.name;
         history.forEach(h => { if (h.cardId === cardId) h.deleted = true; });
         saveData();
         render();
@@ -2355,6 +2369,7 @@ function render() {
   renderChart();
   renderAffordability();
   renderRewards();
+  renderDeletedCards();
   renderNetPosition();
   renderProgress();
   checkAchievements();
@@ -3724,6 +3739,36 @@ function renderLoyaltyPrograms() {
   }
 }
 
+function renderDeletedCards() {
+  const box = document.getElementById('deleted-cards-box');
+  const list = document.getElementById('deleted-cards-list');
+  if (!box || !list) return;
+  if (!deletedCardIds || deletedCardIds.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  list.innerHTML = deletedCardIds.map(id => {
+    const name = (deletedCardNames && deletedCardNames[id]) || '(unnamed card)';
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 12px;margin-bottom:6px">
+        <span style="font-size:13px">${esc(name)}</span>
+        <button class="reset-link" data-restore-card-id="${esc(id)}" style="font-size:12px">Restore</button>
+      </div>
+    `;
+  }).join('');
+  list.querySelectorAll('[data-restore-card-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-restore-card-id');
+      deletedCardIds = deletedCardIds.filter(x => x !== id);
+      delete deletedCardNames[id];
+      saveData();
+      renderDeletedCards();
+      setPlaidStatus('Restored — tap "Sync balances now" to pull it back in from Plaid, or add it manually if it wasn\u2019t a Plaid card.');
+    });
+  });
+}
+
 function renderReserves() {
   const nonDeletedReserves = reserves.filter(r => !r.deleted);
   const total = nonDeletedReserves.reduce((s, r) => s + r.amount, 0);
@@ -4610,7 +4655,7 @@ function setSyncConfig(cfg) {
 }
 
 function buildSyncPayload() {
-  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds, plaidAppSecret: getPlaidAppSecret(), lastPlaidSyncAt };
+  return { cards, history, reserves, rewards, achievements, celebrated, lastOpenedAt, loyaltyPrograms, deletedCardIds, deletedCardNames, plaidAppSecret: getPlaidAppSecret(), lastPlaidSyncAt };
 }
 
 function mergeArraysById(localArr, cloudArr) {
@@ -4757,6 +4802,7 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     }
     if (mergedDeletedCardIds.length !== (deletedCardIds || []).length) changed = true;
     deletedCardIds = mergedDeletedCardIds;
+    deletedCardNames = { ...(cloudPayload.deletedCardNames || {}), ...deletedCardNames };
 
     // Plaid APP_SECRET: synced so it survives a cleared browser and doesn't
     // need re-entering on every device, at the cost of living in the same
@@ -4998,8 +5044,11 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
     if (data.ok) {
       const connSummary = data.connectionsUsed != null ? ` from ${data.connectionsUsed} connected bank(s)` : '';
       let errNote = '';
+      let needsReconnect = false;
       if (data.connectionErrors && data.connectionErrors.length) {
-        errNote = ' ⚠️ ' + data.connectionErrors.map(e => `${e.institution}: ${e.error}`).join(' | ');
+        needsReconnect = data.connectionErrors.some(e => /login|ITEM_LOGIN_REQUIRED|update mode/i.test(e.error || ''));
+        errNote = ' ⚠️ ' + data.connectionErrors.map(e => `${e.institution}: ${e.error}`).join(' | ')
+          + (needsReconnect ? ' — use the "Reconnect" button below under "Show connected banks."' : '');
       }
       setPlaidStatus(`Synced ${data.cardsUpdated} card(s)${connSummary}. Pulling into this device…${errNote}`, !!errNote);
       const cfg = getSyncConfig();
@@ -5094,9 +5143,47 @@ async function renderPlaidConnectionsList() {
     box.innerHTML = data.connections.map(c => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 12px">
         <span style="font-size:13px">${esc(c.institution_name)}</span>
-        <button class="reset-link" data-disconnect-item="${esc(c.item_id)}" style="color:var(--danger);font-size:12px">Disconnect this one</button>
+        <span style="display:flex;gap:10px">
+          <button class="reset-link" data-reconnect-item="${esc(c.item_id)}" style="font-size:12px">Reconnect</button>
+          <button class="reset-link" data-disconnect-item="${esc(c.item_id)}" style="color:var(--danger);font-size:12px">Disconnect this one</button>
+        </span>
       </div>
     `).join('');
+    box.querySelectorAll('[data-reconnect-item]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const itemId = btn.getAttribute('data-reconnect-item');
+        setPlaidStatus('Opening reconnect…');
+        try {
+          const res = await fetch(`${PLAID_BRIDGE_URL}/create-update-link-token?item_id=${encodeURIComponent(itemId)}`, { headers: plaidFetchHeaders() });
+          const data = await res.json();
+          if (!data.ok || !data.link_token) {
+            setPlaidStatus('Could not start reconnect: ' + (data.error || 'unknown error'), true);
+            btn.disabled = false;
+            return;
+          }
+          const handler = Plaid.create({
+            token: data.link_token,
+            onSuccess: () => {
+              // Update mode reuses the same access_token/item_id -- nothing
+              // needs to be re-exchanged or re-saved here, the connection
+              // this Worker already has stored is now valid again.
+              setPlaidStatus('Reconnected! Tap "Sync balances now" to pull in fresh data.');
+              btn.disabled = false;
+            },
+            onExit: (err) => {
+              btn.disabled = false;
+              if (err) setPlaidStatus('Reconnect cancelled or failed: ' + (err.error_message || err.error_code || 'unknown'), true);
+              else setPlaidStatus('');
+            }
+          });
+          handler.open();
+        } catch (err) {
+          setPlaidStatus('Could not reach the connection service: ' + err.message, true);
+          btn.disabled = false;
+        }
+      });
+    });
     box.querySelectorAll('[data-disconnect-item]').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (btn.dataset.confirming !== 'true') {
