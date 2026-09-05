@@ -4736,11 +4736,98 @@ async function pullFromCloud(cfg, { silent } = {}) {
   return rows[0];
 }
 
+// Pure merge for cards + deletion tombstones -- shared by both directions:
+// pulling cloud data into local state (checkForNewerCloudData) AND, just as
+// importantly, merging before pushing local state up (pushToCloud). Cards
+// used to be replaced wholesale from whichever side had the newer timestamp,
+// but a Plaid sync's or bookmarklet's pull-modify-push cycle can land in the
+// gap between a local edit and this device's own debounced push -- so an
+// unconditional push from stale local memory could silently erase whatever
+// the Worker just wrote (this happened for real: a card restore's pending
+// push landed after a Plaid sync and wiped the just-restored cards back out).
+// Deletions are tracked as explicit tombstones precisely so presence/absence
+// in either snapshot never has to be trusted as a deletion signal by itself.
+function mergeCardsAndTombstones(localCards, localDeletedIds, localDeletedNames, cloudCards, cloudDeletedIds, cloudDeletedNames, cloudIsNewer) {
+  const mergedDeletedCardIds = Array.from(new Set([...(localDeletedIds || []), ...(cloudDeletedIds || [])]));
+  const mergedDeletedCardNames = { ...(cloudDeletedNames || {}), ...(localDeletedNames || {}) };
+  let mergedCards = localCards;
+  if (Array.isArray(cloudCards)) {
+    if (cloudIsNewer) {
+      const cloudIds = new Set(cloudCards.map(c => c.id));
+      const localOnly = localCards.filter(c => !cloudIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
+      mergedCards = [...cloudCards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...localOnly];
+    } else {
+      const localIds = new Set(localCards.map(c => c.id));
+      const cloudOnly = cloudCards.filter(c => !localIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
+      mergedCards = [...localCards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...cloudOnly];
+    }
+  }
+  return { cards: mergedCards, deletedCardIds: mergedDeletedCardIds, deletedCardNames: mergedDeletedCardNames };
+}
+
 async function pushToCloud(cfg) {
-  const ts = localStorage.getItem('cc-tracker-data-ts') || new Date().toISOString();
+  const localTs = localStorage.getItem('cc-tracker-data-ts') || new Date().toISOString();
+  const payload = buildSyncPayload();
+
+  // Pull fresh right before pushing and merge against it, instead of blindly
+  // overwriting -- this is the fix for the race above, extended to every
+  // synced field (not just cards) since the same unconditional-overwrite
+  // risk applies to any of them if two devices/Workers write close together.
+  try {
+    const row = await pullFromCloud(cfg);
+    if (row && row.payload) {
+      const cloudTs = row.updated_at;
+      const cloudIsNewer = !!cloudTs && new Date(cloudTs) > new Date(localTs);
+      const merged = mergeCardsAndTombstones(
+        payload.cards, payload.deletedCardIds, payload.deletedCardNames,
+        row.payload.cards, row.payload.deletedCardIds, row.payload.deletedCardNames,
+        cloudIsNewer
+      );
+      payload.cards = merged.cards;
+      payload.deletedCardIds = merged.deletedCardIds;
+      payload.deletedCardNames = merged.deletedCardNames;
+      payload.history = mergeArraysById(payload.history, row.payload.history);
+      payload.reserves = mergeArraysById(payload.reserves, row.payload.reserves);
+      payload.rewards = mergeArraysById(payload.rewards, row.payload.rewards);
+      payload.achievements = mergeArraysById(payload.achievements, row.payload.achievements);
+      payload.loyaltyPrograms = mergeArraysById(payload.loyaltyPrograms, row.payload.loyaltyPrograms);
+      payload.celebrated = Array.from(new Set([...(payload.celebrated || []), ...(row.payload.celebrated || [])]));
+      if (row.payload.lastOpenedAt && new Date(row.payload.lastOpenedAt) > new Date(payload.lastOpenedAt)) {
+        payload.lastOpenedAt = row.payload.lastOpenedAt;
+      }
+      if (row.payload.lastPlaidSyncAt && (!payload.lastPlaidSyncAt || new Date(row.payload.lastPlaidSyncAt) > new Date(payload.lastPlaidSyncAt))) {
+        payload.lastPlaidSyncAt = row.payload.lastPlaidSyncAt;
+      }
+      if (row.payload.plaidAppSecret && (!payload.plaidAppSecret || (cloudIsNewer && row.payload.plaidAppSecret !== payload.plaidAppSecret))) {
+        payload.plaidAppSecret = row.payload.plaidAppSecret;
+        localStorage.setItem('cc-tracker-plaid-app-secret', payload.plaidAppSecret);
+        if (typeof refreshPlaidSecretSetupUI === 'function') refreshPlaidSecretSetupUI();
+      }
+      // Reflect the merge back into local state too, so this device's own
+      // view stays consistent with what was actually pushed.
+      cards = merged.cards;
+      deletedCardIds = merged.deletedCardIds;
+      deletedCardNames = merged.deletedCardNames;
+      history = payload.history;
+      reserves = payload.reserves;
+      rewards = payload.rewards;
+      achievements = payload.achievements;
+      loyaltyPrograms = payload.loyaltyPrograms;
+      celebrated = payload.celebrated;
+      lastOpenedAt = payload.lastOpenedAt;
+      lastPlaidSyncAt = payload.lastPlaidSyncAt;
+    }
+  } catch (err) {
+    // If the pre-push pull fails (offline, etc.), fall back to pushing local
+    // state as-is rather than blocking the save entirely.
+    console.error('Pre-push merge pull failed, pushing local state as-is:', err);
+  }
+
+  const ts = new Date().toISOString();
   await supabaseRequest(cfg, 'POST', { 'Prefer': 'resolution=merge-duplicates,return=minimal' }, [{
-    sync_code: cfg.code, payload: buildSyncPayload(), updated_at: ts
+    sync_code: cfg.code, payload, updated_at: ts
   }]);
+  localStorage.setItem('cc-tracker-data-ts', ts);
   localStorage.setItem('cc-tracker-last-cloud-ts', ts);
   return ts;
 }
@@ -4769,40 +4856,19 @@ async function checkForNewerCloudData(cfg, { applyIfNewer } = { applyIfNewer: tr
     const cloudPayload = row.payload || {};
     let changed = false;
 
-    // Cards used to be replaced wholesale from whichever side had the newer
-    // timestamp -- but a Plaid sync's pull-modify-push cycle can itself lag
-    // behind a fresh local addition, so "newer overall" doesn't guarantee
-    // "has every card." Deletions are tracked as explicit tombstones
-    // (deletedCardIds) precisely so presence/absence in a snapshot never has
-    // to be trusted as a deletion signal on its own -- only a tombstone does.
-    const mergedDeletedCardIds = Array.from(new Set([...(deletedCardIds || []), ...(cloudPayload.deletedCardIds || [])]));
-    if (Array.isArray(cloudPayload.cards)) {
-      const cloudCards = cloudPayload.cards;
-      const cloudIsNewer = applyIfNewer && (!localTs || new Date(cloudTs) > new Date(localTs));
-      let mergedCards;
-      if (cloudIsNewer) {
-        // Cloud is chronologically ahead -- trust its field values for any
-        // card id it has, but keep any card that exists locally and is
-        // simply missing from this cloud snapshot (a race, not a deletion),
-        // unless it's explicitly tombstoned.
-        const cloudIds = new Set(cloudCards.map(c => c.id));
-        const localOnly = cards.filter(c => !cloudIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
-        mergedCards = [...cloudCards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...localOnly];
-      } else {
-        // Local is at least as fresh -- keep local field values, but still
-        // adopt any card that exists in the cloud but not locally yet (e.g.
-        // added on another device whose push we haven't seen here), and
-        // still honor deletions from either side.
-        const localIds = new Set(cards.map(c => c.id));
-        const cloudOnly = cloudCards.filter(c => !localIds.has(c.id) && !mergedDeletedCardIds.includes(c.id));
-        mergedCards = [...cards.filter(c => !mergedDeletedCardIds.includes(c.id)), ...cloudOnly];
-      }
-      if (JSON.stringify(mergedCards) !== JSON.stringify(cards)) changed = true;
-      cards = mergedCards;
-    }
-    if (mergedDeletedCardIds.length !== (deletedCardIds || []).length) changed = true;
-    deletedCardIds = mergedDeletedCardIds;
-    deletedCardNames = { ...(cloudPayload.deletedCardNames || {}), ...deletedCardNames };
+    // Cards + deletion tombstones: merged via the same pure function used by
+    // pushToCloud, so both directions stay consistent.
+    const cloudIsNewerForCards = applyIfNewer && (!localTs || new Date(cloudTs) > new Date(localTs));
+    const cardMerge = mergeCardsAndTombstones(
+      cards, deletedCardIds, deletedCardNames,
+      cloudPayload.cards, cloudPayload.deletedCardIds, cloudPayload.deletedCardNames,
+      cloudIsNewerForCards
+    );
+    if (JSON.stringify(cardMerge.cards) !== JSON.stringify(cards)) changed = true;
+    if (cardMerge.deletedCardIds.length !== (deletedCardIds || []).length) changed = true;
+    cards = cardMerge.cards;
+    deletedCardIds = cardMerge.deletedCardIds;
+    deletedCardNames = cardMerge.deletedCardNames;
 
     // Plaid APP_SECRET: synced so it survives a cleared browser and doesn't
     // need re-entering on every device, at the cost of living in the same
