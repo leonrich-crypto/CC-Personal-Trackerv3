@@ -52,17 +52,17 @@
   .wrap { max-width: 1480px; width: 100%; margin: 0 auto; }
   @media (min-width: 1100px) { body { padding-left: 40px; padding-right: 40px; } }
   h1 { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 27px; font-weight: 700; margin: 0 0 6px; color: var(--text-primary); letter-spacing: -0.4px; }
-  .subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 0 28px; font-weight: 400; }
+  .subtitle { font-size: 17px; color: var(--text-secondary); margin: 0 0 28px; font-weight: 400; }
   .progress-wrap { margin: 2px 0 22px; }
   .progress-track { height: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--success)); border-radius: 6px; width: 0%; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
   .progress-fill.has-progress { min-width: 16px; }
-  .progress-caption { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+  .progress-caption { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; font-size: 15px; color: var(--text-secondary); font-weight: 500; }
   .progress-caption .p-pct { color: var(--success); font-weight: 700; font-variant-numeric: tabular-nums; }
   .util-track { height: 4px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 4px; }
   .util-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
   .summary { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
-  .summary .label { font-size: 12px; color: var(--text-secondary); margin: 0 0 6px; letter-spacing: 0.2px; font-weight: 500; }
+  .summary .label { font-size: 15px; color: var(--text-secondary); margin: 0 0 6px; letter-spacing: 0.2px; font-weight: 500; }
   .summary .value { font-size: 34px; font-weight: 700; margin: 0; font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; color: var(--text-primary); letter-spacing: -0.2px; }
   .summary .right { text-align: right; }
   .chart-box { position: relative; height: 280px; margin-bottom: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
@@ -77,36 +77,36 @@
   }
   .card-remove-btn {
     position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%;
-    border: none; background: transparent; color: var(--text-muted); font-size: 16px; line-height: 1;
+    border: none; background: transparent; color: var(--text-muted); font-size: 18px; line-height: 1;
     cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;
   }
   .card-remove-btn:hover { background: var(--surface-2); color: var(--danger); }
   .full-payoff-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 12px; }
-  .full-payoff-actions button { font-size: 11.5px; padding: 6px 10px; width: 100%; }
+  .full-payoff-actions button { font-size: 14px; padding: 6px 10px; width: 100%; }
   .card-col:hover { border-color: var(--border); }
   .draggable-card { cursor: grab; }
   .draggable-card.dragging { opacity: 0.4; }
   .draggable-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,163,255,0.3); }
-  .card-col .name { font-weight: 600; font-size: 13.5px; margin: 0 0 8px; color: var(--card-color, var(--accent)); line-height: 1.35; letter-spacing: -0.1px; min-height: 2.7em; display: flex; align-items: flex-start; }
-  .card-col .apr { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; letter-spacing: 0.1px; font-weight: 400; }
+  .card-col .name { font-weight: 600; font-size: 16px; margin: 0 0 8px; color: var(--card-color, var(--accent)); line-height: 1.35; letter-spacing: -0.1px; min-height: 2.7em; display: flex; align-items: flex-start; }
+  .card-col .apr { font-size: 15px; color: var(--text-secondary); margin: 0 0 14px; letter-spacing: 0.1px; font-weight: 400; }
   .category-badge-row { margin: 0 0 10px; cursor: pointer; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px; min-height: 46px; }
   .category-badge {
-    display: inline-block; font-size: 10.5px; font-weight: 600; padding: 3px 9px;
+    display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 9px;
     border: 1px solid; border-radius: 20px; letter-spacing: 0.1px;
   }
   .category-edit-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
-  .cat-option { display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 1; padding: 3px 0; cursor: pointer; }
+  .cat-option { display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 1; padding: 3px 0; cursor: pointer; }
   .category-edit-box .cat-option input { cursor: pointer; }
-  .category-edit-box button { width: 100%; margin-top: 6px; font-size: 11.5px; padding: 5px 8px; }
+  .category-edit-box button { width: 100%; margin-top: 6px; font-size: 14px; padding: 5px 8px; }
   .card-col .bal { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-size: 21px; font-weight: 700; margin: 0 0 12px; color: var(--text-primary); letter-spacing: -0.1px; }
   .card-col .meta { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 0; }
-  .card-col .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 400; gap: 8px; }
+  .card-col .meta-row { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 400; gap: 8px; }
   .card-col .meta-row span:first-child { white-space: nowrap; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .card-col .meta-row:last-child { margin-bottom: 0; }
-  .card-col .meta-row span:last-child { color: var(--text-primary); font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12.5px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .card-col .meta-row span:last-child { color: var(--text-primary); font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; text-align: right; white-space: nowrap; flex-shrink: 0; }
   .card-col .meta-row span.unset { color: var(--text-muted); font-weight: 400; }
   .card-col .name-row { padding-right: 22px; }
-  .card-col .paid-status { margin-top: auto; padding-top: 12px; font-size: 12.5px; color: var(--success); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .card-col .paid-status { margin-top: auto; padding-top: 12px; font-size: 15px; color: var(--success); font-weight: 500; display: flex; align-items: center; gap: 6px; }
   .category-badge-row.empty { min-height: 24px; opacity: 0; transition: opacity 0.15s ease; }
   .card-col:hover .category-badge-row.empty, .card-col:focus-within .category-badge-row.empty { opacity: 1; }
   @media (hover: none) { .category-badge-row.empty { opacity: 1; } }
@@ -114,19 +114,19 @@
   .card-col .meta-row.editable { cursor: pointer; }
   .card-col .meta-row.editable:hover span:last-child { text-decoration: underline; }
   .card-col .due-edit-row { display: flex; gap: 6px; margin-top: 2px; align-items: center; }
-  .card-col .due-edit-row input[type=date] { flex: 1; font-size: 11.5px; padding: 4px 6px; min-width: 0; }
-  .card-col .due-edit-row button { font-size: 11px; padding: 4px 8px; white-space: nowrap; }
+  .card-col .due-edit-row input[type=date] { flex: 1; font-size: 14px; padding: 4px 6px; min-width: 0; }
+  .card-col .due-edit-row button { font-size: 13px; padding: 4px 8px; white-space: nowrap; }
   .form-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 24px; }
   .tab-bar { display: flex; gap: 4px; margin-bottom: 22px; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-size: 13.5px; font-weight: 600; padding: 10px 14px; cursor: pointer; white-space: nowrap; font-family: inherit; transition: color 0.15s ease, border-color 0.15s ease; }
+  .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); font-size: 16px; font-weight: 600; padding: 10px 14px; cursor: pointer; white-space: nowrap; font-family: inherit; transition: color 0.15s ease, border-color 0.15s ease; }
   .tab-btn:hover { color: var(--text-primary); }
   .tab-btn.active { color: var(--accent-bright); border-bottom-color: var(--accent); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
-  .form-box p { font-size: 13px; color: var(--text-secondary); font-weight: 600; margin: 0 0 14px; letter-spacing: 0.1px; }
+  .form-box p { font-size: 16px; color: var(--text-secondary); font-weight: 600; margin: 0 0 14px; letter-spacing: 0.1px; }
   .form-box > p:first-of-type, .hist-label {
     font-family: 'Space Grotesk', 'Inter', sans-serif; text-transform: uppercase;
-    font-size: 11.5px; letter-spacing: 1.3px; color: var(--text-secondary); font-weight: 600;
+    font-size: 14px; letter-spacing: 1.3px; color: var(--text-secondary); font-weight: 600;
   }
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
   input[type=checkbox] {
@@ -148,7 +148,7 @@
   }
   select, input[type=text], input[type=number], input[type=date] {
     padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
-    font-size: 14px; background: var(--surface); color: var(--text-primary); font-family: 'Inter', sans-serif;
+    font-size: 17px; background: var(--surface); color: var(--text-primary); font-family: 'Inter', sans-serif;
     color-scheme: dark;
   }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
@@ -166,7 +166,7 @@
   #note-input { flex: 2; min-width: 140px; }
   button {
     padding: 9px 18px; border: 1px solid var(--border); border-radius: 9px;
-    background: var(--surface); color: var(--text-primary); font-size: 14px; cursor: pointer;
+    background: var(--surface); color: var(--text-primary); font-size: 17px; cursor: pointer;
     font-weight: 500; font-family: 'Inter', sans-serif; transition: background 0.15s ease, border-color 0.15s ease;
   }
   button:hover { background: var(--surface-2); border-color: var(--border-strong, var(--border)); }
@@ -175,43 +175,43 @@
   .money-input-wrap { position: relative; flex: 1; min-width: 90px; }
   .money-input-wrap::before {
     content: '$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: var(--text-secondary); font-size: 14px; pointer-events: none;
+    color: var(--text-secondary); font-size: 17px; pointer-events: none;
   }
   .money-input-wrap input { width: 100%; padding-left: 24px; }
-  .hist-label { font-family: 'Space Grotesk', 'Inter', sans-serif; text-transform: uppercase; font-size: 11.5px; color: var(--text-secondary); font-weight: 600; margin: 0 0 12px; letter-spacing: 1.3px; }
-  .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; gap: 10px; }
+  .hist-label { font-family: 'Space Grotesk', 'Inter', sans-serif; text-transform: uppercase; font-size: 14px; color: var(--text-secondary); font-weight: 600; margin: 0 0 12px; letter-spacing: 1.3px; }
+  .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 16px; gap: 10px; }
   .hist-row-main { flex: 1; min-width: 0; }
   .hist-row-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .hist-delete-btn {
     width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); background: transparent;
-    color: var(--text-muted); cursor: pointer; font-size: 13px; line-height: 1; display: inline-flex;
+    color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; display: inline-flex;
     align-items: center; justify-content: center; flex-shrink: 0; padding: 0;
   }
   .hist-delete-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.1); }
   .hist-group { margin-top: 14px; }
   .hist-group:first-child { margin-top: 0; }
   .hist-group-header { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; margin-bottom: 2px; }
-  .hist-group-header .hg-label { font-size: 12px; font-weight: 600; color: var(--accent-bright); }
-  .hist-group-header .hg-sub { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .hist-group-header .hg-label { font-size: 15px; font-weight: 600; color: var(--accent-bright); }
+  .hist-group-header .hg-sub { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .hist-row:last-child { border-bottom: none; }
-  .hist-amt { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; }
+  .hist-amt { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px; }
   .pos { color: var(--danger); }
   .neg { color: var(--success); }
-  .footer-note { font-size: 12.5px; color: var(--text-muted); margin-top: 32px; text-align: center; line-height: 1.8; }
-  .reset-link { font-size: 12.5px; color: var(--accent); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; font-weight: 500; }
+  .footer-note { font-size: 15px; color: var(--text-muted); margin-top: 32px; text-align: center; line-height: 1.8; }
+  .reset-link { font-size: 15px; color: var(--accent); text-decoration: none; cursor: pointer; background: none; border: none; padding: 0; font-weight: 500; }
   .reset-link:hover { text-decoration: underline; }
   .planner-row {
     display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; margin-top: 8px;
     background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--card-color, var(--accent));
-    border-radius: 10px; font-size: 13.5px;
+    border-radius: 10px; font-size: 16px;
   }
   .planner-row .pname { font-weight: 600; color: var(--text-primary); }
-  .planner-row .pnote { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
-  .planner-row .pamt { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--text-primary); }
-  .planner-row .prio { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--card-color, var(--accent)); color: #06121F; font-size: 10px; font-weight: 700; margin-right: 8px; }
+  .planner-row .pnote { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+  .planner-row .pamt { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px; color: var(--text-primary); }
+  .planner-row .prio { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--card-color, var(--accent)); color: #06121F; font-size: 13px; font-weight: 700; margin-right: 8px; }
   .planner-row-main { display: flex; align-items: center; gap: 4px; }
   .apply-pay-btn {
-    font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success);
+    font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success);
     background: transparent; color: var(--success); cursor: pointer; font-weight: 500; margin-left: 12px;
   }
   .apply-pay-btn:hover { background: rgba(74,222,128,0.12); }
@@ -219,40 +219,40 @@
   .apply-pay-btn.unpay-mode { border-color: var(--danger); color: var(--danger); }
   .apply-pay-btn.unpay-mode:hover { background: rgba(255,107,107,0.12); }
   .planner-row-right { display: flex; align-items: center; }
-  .planner-total { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-secondary); display: flex; justify-content: space-between; font-weight: 500; }
+  .planner-total { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 16px; color: var(--text-secondary); display: flex; justify-content: space-between; font-weight: 500; }
   .cost-row {
     display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; margin-bottom: 8px;
     background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--card-color, var(--accent));
-    border-radius: 10px; font-size: 13.5px;
+    border-radius: 10px; font-size: 16px;
   }
   .cost-row .cr-name { font-weight: 600; color: var(--text-primary); }
-  .cost-row .cr-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
-  .cost-row .cr-amt { font-weight: 700; font-size: 15px; color: var(--danger); font-variant-numeric: tabular-nums; }
-  .cost-total { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-secondary); display: flex; justify-content: space-between; font-weight: 500; }
+  .cost-row .cr-sub { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+  .cost-row .cr-amt { font-weight: 700; font-size: 17px; color: var(--danger); font-variant-numeric: tabular-nums; }
+  .cost-total { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 16px; color: var(--text-secondary); display: flex; justify-content: space-between; font-weight: 500; }
   .cost-total span:last-child { color: var(--danger); font-weight: 700; font-variant-numeric: tabular-nums; }
-  .planner-warn { font-size: 13px; color: var(--danger); margin-top: 10px; }
+  .planner-warn { font-size: 16px; color: var(--danger); margin-top: 10px; }
   .celebration-box {
     background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.4); border-radius: 14px;
     padding: 16px 18px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
   }
-  .celebration-box .c-text { font-size: 14px; font-weight: 600; color: var(--success); margin: 0; }
-  .celebration-box .c-sub { font-size: 12.5px; color: var(--text-secondary); margin: 2px 0 0; font-weight: 400; }
-  .celebration-dismiss { font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success); background: transparent; color: var(--success); cursor: pointer; font-weight: 500; white-space: nowrap; }
+  .celebration-box .c-text { font-size: 17px; font-weight: 600; color: var(--success); margin: 0; }
+  .celebration-box .c-sub { font-size: 15px; color: var(--text-secondary); margin: 2px 0 0; font-weight: 400; }
+  .celebration-dismiss { font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success); background: transparent; color: var(--success); cursor: pointer; font-weight: 500; white-space: nowrap; }
   .celebration-dismiss:hover { background: rgba(74,222,128,0.12); }
   .reminder-box {
     background: rgba(79,163,255,0.08); border: 1px solid rgba(79,163,255,0.4); border-radius: 14px;
     padding: 16px 18px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
   }
-  .reminder-box .r-text { font-size: 14px; font-weight: 600; color: var(--accent-bright); margin: 0; }
-  .reminder-box .r-sub { font-size: 12.5px; color: var(--text-secondary); margin: 2px 0 0; font-weight: 400; }
-  .reminder-dismiss { font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent-bright); cursor: pointer; font-weight: 500; white-space: nowrap; }
+  .reminder-box .r-text { font-size: 17px; font-weight: 600; color: var(--accent-bright); margin: 0; }
+  .reminder-box .r-sub { font-size: 15px; color: var(--text-secondary); margin: 2px 0 0; font-weight: 400; }
+  .reminder-dismiss { font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent-bright); cursor: pointer; font-weight: 500; white-space: nowrap; }
   .reminder-dismiss:hover { background: rgba(79,163,255,0.12); }
   .notif-box {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
     padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 14px;
   }
-  .notif-box p { font-size: 12.5px; color: var(--text-secondary); margin: 0; flex: 1; min-width: 0; }
-  .notif-btn { font-size: 12px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent-bright); cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+  .notif-box p { font-size: 15px; color: var(--text-secondary); margin: 0; flex: 1; min-width: 0; }
+  .notif-btn { font-size: 15px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent-bright); cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
   .notif-btn:hover { background: rgba(79,163,255,0.12); }
   .notif-btn:disabled { opacity: 0.5; cursor: default; }
   .rewards-charts-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -264,8 +264,8 @@
   .achievement-badge.unlocked { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.4); }
   .achievement-badge.locked { opacity: 0.45; }
   .achievement-badge .ab-icon { font-size: 26px; margin-bottom: 6px; line-height: 1; }
-  .achievement-badge .ab-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin: 0 0 3px; }
-  .achievement-badge .ab-desc { font-size: 11px; color: var(--text-muted); margin: 0; line-height: 1.35; }
+  .achievement-badge .ab-name { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 3px; }
+  .achievement-badge .ab-desc { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.35; }
   input[type=range] {
     -webkit-appearance: none; -moz-appearance: none; appearance: none;
     width: 100%; height: 6px; background: transparent; outline: none; cursor: pointer; margin: 10px 0;
@@ -288,50 +288,50 @@
   .reward-row {
     display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 8px;
     background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--card-color, var(--accent));
-    border-radius: 10px; font-size: 13px;
+    border-radius: 10px; font-size: 16px;
   }
   .reward-row .rw-name { font-weight: 600; color: var(--text-primary); }
   .reward-row .rw-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
   .loyalty-row {
     display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 16px; gap: 10px;
   }
   .loyalty-row .ly-name { font-weight: 600; color: var(--text-primary); }
-  .loyalty-row .ly-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .loyalty-row .ly-meta { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
   .loyalty-row .ly-meta.stale { color: var(--danger); }
   .loyalty-row .ly-amt { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .upcoming-box {
     background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.35); border-radius: 14px;
     padding: 18px 18px 16px; margin-bottom: 24px;
   }
-  .upcoming-box .u-title { font-size: 13px; font-weight: 600; color: var(--danger); letter-spacing: 0.1px; margin: 0 0 12px; }
-  .upcoming-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 13.5px; }
+  .upcoming-box .u-title { font-size: 16px; font-weight: 600; color: var(--danger); letter-spacing: 0.1px; margin: 0 0 12px; }
+  .upcoming-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 16px; }
   .upcoming-row .u-card { color: var(--text-primary); font-weight: 600; }
-  .upcoming-row .u-due { font-size: 12px; color: var(--text-secondary); margin-top: 2px; font-weight: 400; }
-  .upcoming-row .u-min { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--danger); font-size: 15px; }
+  .upcoming-row .u-due { font-size: 15px; color: var(--text-secondary); margin-top: 2px; font-weight: 400; }
+  .upcoming-row .u-min { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--danger); font-size: 17px; }
   .upcoming-row .u-actions { display: flex; align-items: center; gap: 10px; }
   .mark-paid-btn {
-    font-size: 12.5px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success);
+    font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--success);
     background: transparent; color: var(--success); cursor: pointer; font-weight: 500;
   }
   .mark-paid-btn:hover { background: rgba(74,222,128,0.12); }
   .mark-paid-btn:disabled { opacity: 0.5; cursor: default; background: transparent; }
-  .card-pay-min-btn { background: var(--accent); color: #06121F; border-color: var(--accent); font-weight: 600; font-size: 11.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-pay-min-btn { background: var(--accent); color: #06121F; border-color: var(--accent); font-weight: 600; font-size: 14px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card-pay-min-btn:hover { background: var(--accent-bright); }
   .card-pay-min-btn:disabled { opacity: 0.5; background: var(--accent); }
   .dismiss-btn {
-    font-size: 12.5px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent);
+    font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent);
     background: transparent; color: var(--accent-bright); cursor: pointer; font-weight: 500;
   }
   .dismiss-btn:hover { background: rgba(79,163,255,0.12); }
   .dismiss-btn:disabled { opacity: 0.5; cursor: default; background: transparent; }
   .u-no-min {
-    display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--success); font-weight: 500;
+    display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--success); font-weight: 500;
   }
   .u-no-min svg { flex-shrink: 0; }
   .savings-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
   .savings-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-  .savings-stat .s-label { font-size: 11.5px; color: var(--text-secondary); margin: 0 0 6px; font-weight: 500; }
+  .savings-stat .s-label { font-size: 14px; color: var(--text-secondary); margin: 0 0 6px; font-weight: 500; }
   .savings-stat .s-value { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 700; margin: 0; color: var(--text-primary); }
   .savings-highlight { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.4); }
   .afford-box {
@@ -339,10 +339,10 @@
   }
   .afford-box.ok { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.4); }
   .afford-box.short { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.4); }
-  .afford-box .a-title { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  .afford-box .a-title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
   .afford-box.ok .a-title { color: var(--success); }
   .afford-box.short .a-title { color: var(--danger); }
-  .afford-box .a-sub { font-size: 12px; color: var(--text-secondary); margin: 0; }
+  .afford-box .a-sub { font-size: 15px; color: var(--text-secondary); margin: 0; }
   .savings-highlight .s-value { color: var(--success); }
   button:focus-visible, .reset-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .install-banner {
@@ -351,10 +351,10 @@
     padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
   }
   .install-banner .i-icon { font-size: 22px; flex-shrink: 0; }
-  .install-banner .i-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .install-banner .i-text { flex: 1; font-size: 16px; color: var(--text-secondary); line-height: 1.5; }
   .install-banner .i-text b { color: var(--text-primary); }
   .install-banner .i-share { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1.5px solid var(--accent-bright); border-radius: 5px; vertical-align: middle; margin: 0 2px; }
-  .install-dismiss { font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-weight: 500; flex-shrink: 0; }
+  .install-dismiss { font-size: 15px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-weight: 500; flex-shrink: 0; }
   .install-dismiss:hover { color: var(--text-primary); border-color: var(--text-secondary); }
   .card-col { transition: border-color 0.15s ease, transform 0.18s ease, box-shadow 0.18s ease; }
   .card-col:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
@@ -396,11 +396,11 @@
   h1 { font-family: var(--display); font-size: 30px; font-weight: 700; letter-spacing: -0.8px; }
   .subtitle { color: var(--text-secondary); }
   .summary { margin-bottom: 24px; }
-  .summary .label { font-size: 13px; color: var(--text-secondary); }
+  .summary .label { font-size: 16px; color: var(--text-secondary); }
   .summary .value { font-family: var(--display); font-size: 54px; font-weight: 700; letter-spacing: -1.5px; line-height: 1.05; }
   .progress-track { height: 12px; border-radius: 999px; background: var(--surface-2); }
   .progress-fill { border-radius: 999px; }
-  .progress-caption { font-size: 12.5px; }
+  .progress-caption { font-size: 15px; }
   .tab-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 24px; }
   .tab-btn { flex: 1; text-align: center; border: none; border-radius: 10px; padding: 9px 14px; color: var(--text-secondary); }
   .tab-btn.active { background: var(--surface-2); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--border); }
@@ -431,7 +431,7 @@
     background-blend-mode: multiply;
   }
   .card-remove-btn { z-index: 2; top: 12px; right: 12px; color: var(--text-secondary); }
-  .card-col .name { color: var(--text-primary); font-family: var(--display); font-size: 15.5px; font-weight: 600; letter-spacing: -0.2px; min-height: 2.7em; }
+  .card-col .name { color: var(--text-primary); font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: -0.2px; min-height: 2.7em; }
   .card-col .apr { color: var(--text-secondary); margin: 0 0 12px; }
   .category-badge-row { min-height: 46px; margin-bottom: 4px; }
   .category-badge-row.empty { min-height: 46px; }
@@ -443,7 +443,7 @@
     background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--ring-track) 0); display: grid; place-items: center;
   }
   .util-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: color-mix(in srgb, var(--card-color, #6AA9FF) 10%, var(--surface)); }
-  .util-ring span { position: relative; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .util-ring span { position: relative; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .card-col .meta { border-top: none; padding-top: 0; }
   .card-col .meta-row { margin-bottom: 8px; }
   .full-payoff-actions button { border-radius: 10px; padding: 8px 10px; }
@@ -455,16 +455,16 @@
     body { padding: 20px 14px 60px; }
     .wrap { max-width: 100%; }
     h1 { font-size: 21px; }
-    .subtitle { font-size: 13px; }
+    .subtitle { font-size: 16px; }
     .summary .value { font-size: 26px; }
     #month-net { font-size: 17px !important; }
     .cards-grid { grid-template-columns: 1fr; gap: 10px; }
     .card-col { padding: 12px 12px 14px; }
     .card-col .bal { font-size: 18px; }
-    .full-payoff-actions button { font-size: 11px; padding: 7px 8px; }
+    .full-payoff-actions button { font-size: 13px; padding: 7px 8px; }
     .row { gap: 6px; }
     .row > input, .row > select, .row > .money-input-wrap { min-width: 0 !important; flex: 1 1 100% !important; }
-    button { font-size: 13px; padding: 8px 14px; }
+    button { font-size: 16px; padding: 8px 14px; }
     .planner-row, .cost-row, .upcoming-row { flex-direction: column; align-items: flex-start; gap: 6px; }
     .planner-row-right, .u-actions { width: 100%; justify-content: space-between; }
     .savings-stats { grid-template-columns: 1fr; }
@@ -481,21 +481,21 @@
   /* ===== Summary tiles, debt donut, mobile nav ===== */
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
-  .tile .t-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 0 0 6px; }
+  .tile .t-label { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin: 0 0 6px; }
   .tile .t-value { font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: -0.6px; margin: 0; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .tile .t-sub { font-size: 11.5px; color: var(--text-muted); margin: 5px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .t-sub { font-size: 14px; color: var(--text-muted); margin: 5px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .split-row { display: flex; align-items: center; gap: 28px; margin-top: 4px; }
   .split-donut { position: relative; width: 190px; height: 190px; flex-shrink: 0; }
   .split-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   .split-center span { font-family: var(--display); font-size: 21px; font-weight: 700; letter-spacing: -0.5px; }
-  .split-center small { font-size: 12px; color: var(--text-muted); }
+  .split-center small { font-size: 15px; color: var(--text-muted); }
   .split-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .split-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .split-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 16px; }
   .split-item:last-child { border-bottom: none; }
   .split-item .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .split-item .s-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
   .split-item .s-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .split-item .s-pct { width: 38px; text-align: right; color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .split-item .s-pct { width: 38px; text-align: right; color: var(--text-muted); font-size: 15px; font-variant-numeric: tabular-nums; }
   @media (max-width: 700px) {
     .tiles { grid-template-columns: 1fr 1fr; }
     .split-row { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -517,7 +517,7 @@
     </div>
     <div style="text-align:right">
       <button id="theme-toggle" type="button" style="white-space:nowrap;margin-right:8px">Dark mode</button><button class="primary" id="save-btn" style="white-space:nowrap">Save</button>
-      <p id="save-status" style="font-size:11.5px;color:var(--text-muted);margin:6px 0 0"></p>
+      <p id="save-status" style="font-size:14px;color:var(--text-muted);margin:6px 0 0"></p>
     </div>
   </div>
 
@@ -527,7 +527,7 @@
     <div>
       <p class="label">Total owed</p>
       <p class="value" id="total-owed">$0.00</p>
-      <p id="net-position-sub" style="font-size:12px;color:var(--text-muted);margin:6px 0 0"></p>
+      <p id="net-position-sub" style="font-size:15px;color:var(--text-muted);margin:6px 0 0"></p>
     </div>
     <div class="right">
       <p class="label">This month, so far</p>
@@ -544,8 +544,8 @@
   </div>
 
   <div id="pace-box" style="display:none;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:20px">
-    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 4px;font-weight:500">At your current pace</p>
-    <p id="pace-text" style="font-size:15px;margin:0;font-weight:500"></p>
+    <p style="font-size:15px;color:var(--text-secondary);margin:0 0 4px;font-weight:500">At your current pace</p>
+    <p id="pace-text" style="font-size:17px;margin:0;font-weight:500"></p>
   </div>
 
   <div id="celebration-banner"></div>
@@ -565,7 +565,7 @@
 
   <div class="tiles" id="overview-tiles"></div>
 
-  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);font-weight:500" id="trend-legend"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:15px;color:var(--text-secondary);font-weight:500" id="trend-legend"></div>
 
   <div class="chart-box">
     <canvas id="debt-chart" role="img" aria-label="Line chart of total credit card debt and per-card balances over time"></canvas>
@@ -588,12 +588,12 @@
       <input id="note-input" type="text" placeholder="Note (optional)" />
       <button class="primary" id="add-btn">Log entry</button>
     </div>
-    <p id="type-hint" style="font-size:11px;color:var(--text-muted);margin:6px 0 0;text-transform:none;letter-spacing:0;font-weight:400"></p>
+    <p id="type-hint" style="font-size:13px;color:var(--text-muted);margin:6px 0 0;text-transform:none;letter-spacing:0;font-weight:400"></p>
   </div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <p class="hist-label" style="margin:0">Your cards</p>
-    <select id="card-sort-select" style="width:auto;font-size:12.5px;padding:6px 10px">
+    <select id="card-sort-select" style="width:auto;font-size:15px;padding:6px 10px">
       <option value="balance-desc" selected>Balance: highest first</option>
       <option value="balance-asc">Balance: lowest first</option>
       <option value="apr-desc">APR: highest first</option>
@@ -616,7 +616,7 @@
   </div>
 
   <div id="statement-compare-box" style="display:none">
-    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:18px 0 10px;font-size:12.5px;color:var(--text-secondary);font-weight:500">
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin:18px 0 10px;font-size:15px;color:var(--text-secondary);font-weight:500">
       <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#9A9AAE;display:inline-block"></span>Statement balance</span>
       <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block"></span>Current balance owed</span>
     </div>
@@ -648,7 +648,7 @@
       <button class="primary" id="planner-btn">Calculate</button>
       <button id="planner-reset-btn">Reset</button>
     </div>
-    <p style="margin:-4px 0 0"><button class="reset-link" id="planner-use-setaside-btn" style="font-size:12px;display:none"></button></p>
+    <p style="margin:-4px 0 0"><button class="reset-link" id="planner-use-setaside-btn" style="font-size:15px;display:none"></button></p>
     <div class="chart-box" id="planner-chart-box" style="height:200px;display:none;margin-top:14px;margin-bottom:0">
       <canvas id="planner-chart" role="img" aria-label="Bar chart of recommended payment amount per card"></canvas>
     </div>
@@ -657,7 +657,7 @@
 
   <div class="form-box" id="savings-box">
     <p>How much could paying smart save you?</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
     <div class="row">
       <div class="money-input-wrap"><input id="savings-amount" type="number" step="0.01" placeholder="Typical monthly payment" /></div>
       <button class="primary" id="savings-btn">Project savings</button>
@@ -668,12 +668,12 @@
 
   <div class="form-box" id="whatif-box">
     <p>What if I paid more each month?</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Drag to see your debt-free date shift in real time — uses the strategy selected above</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Drag to see your debt-free date shift in real time — uses the strategy selected above</p>
     <input type="range" id="whatif-slider" min="0" max="1000" step="10" value="300" style="width:100%" />
     <div style="display:flex;justify-content:space-between;margin-top:6px">
-      <span style="font-size:12px;color:var(--text-muted)">$0/mo</span>
-      <span id="whatif-amount" style="font-size:16px;font-weight:700;color:var(--accent-bright)">$300/mo</span>
-      <span id="whatif-max" style="font-size:12px;color:var(--text-muted)">$1,000/mo</span>
+      <span style="font-size:15px;color:var(--text-muted)">$0/mo</span>
+      <span id="whatif-amount" style="font-size:18px;font-weight:700;color:var(--accent-bright)">$300/mo</span>
+      <span id="whatif-max" style="font-size:15px;color:var(--text-muted)">$1,000/mo</span>
     </div>
     <div id="whatif-result" style="margin-top:14px"></div>
   </div>
@@ -701,18 +701,18 @@
         <p class="value" id="reserve-total" style="font-size:26px">$0.00</p>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;font-weight:600">Which card has money set aside</p>
+    <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px;font-weight:600">Which card has money set aside</p>
     <div id="reserve-per-card-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-    <p id="reserve-per-bank-label" style="font-size:12px;color:var(--text-secondary);margin:0 0 8px;font-weight:600;display:none">Which bank has the money</p>
+    <p id="reserve-per-bank-label" style="font-size:15px;color:var(--text-secondary);margin:0 0 8px;font-weight:600;display:none">Which bank has the money</p>
     <div id="reserve-per-bank-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
     <div id="affordability-box"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:12.5px;color:var(--text-secondary);font-weight:500" id="reserve-chart-legend"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:15px;color:var(--text-secondary);font-weight:500" id="reserve-chart-legend"></div>
     <div class="chart-box" style="height:200px;margin-bottom:0">
       <canvas id="reserve-chart" role="img" aria-label="Line chart of cumulative money set aside per card over time"></canvas>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:8px">
       <p class="hist-label" style="margin:0">Set-aside activity</p>
-      <select id="reserve-view-mode" style="width:auto;font-size:12.5px;padding:6px 10px">
+      <select id="reserve-view-mode" style="width:auto;font-size:15px;padding:6px 10px">
         <option value="all">All entries</option>
         <option value="week">By week</option>
         <option value="month" selected>By month</option>
@@ -727,7 +727,7 @@
 
   <div class="form-box" id="target-box">
     <p>Set a target payoff date</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
     <div class="row">
       <input id="target-date" type="date" style="flex:1;min-width:140px" />
       <button class="primary" id="target-btn">Calculate</button>
@@ -742,7 +742,7 @@
 
   <div class="form-box" id="rewards-box">
     <p>Rewards &amp; points</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Separate from debt payoff — just tracks what you've earned and used</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Separate from debt payoff — just tracks what you've earned and used</p>
     <div class="row">
       <select id="rewards-card-select" style="flex:1;min-width:160px"></select>
       <select id="rewards-type-select" style="width:110px">
@@ -787,7 +787,7 @@
 
   <div class="form-box" id="loyalty-box">
     <p>Point &amp; mile balances</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Fed by the bookmarklet below, or type/paste them in yourself — no scraping, no stored logins</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Fed by the bookmarklet below, or type/paste them in yourself — no scraping, no stored logins</p>
     <div id="loyalty-list"></div>
     <div class="row" style="margin-top:4px">
       <input id="loyalty-name" type="text" placeholder="Program name (e.g. Chase Ultimate Rewards)" style="flex:2;min-width:160px" />
@@ -798,34 +798,34 @@
       <button class="primary" id="loyalty-add-btn" style="flex:1">Add / update program</button>
     </div>
     <p class="hist-label" style="margin-top:16px">Bulk import (CSV)</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">Format: <code>program,balance,date</code> — one per line. Date is optional (defaults to today); matches by program name.</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:0 0 8px">Format: <code>program,balance,date</code> — one per line. Date is optional (defaults to today); matches by program name.</p>
     <div class="row">
-      <textarea id="loyalty-csv" rows="3" placeholder="Chase Ultimate Rewards,84200,2026-08-20&#10;Amex Membership Rewards,51000" style="flex:1;font-family:monospace;font-size:12.5px"></textarea>
+      <textarea id="loyalty-csv" rows="3" placeholder="Chase Ultimate Rewards,84200,2026-08-20&#10;Amex Membership Rewards,51000" style="flex:1;font-family:monospace;font-size:15px"></textarea>
     </div>
     <div class="row">
       <button id="loyalty-import-btn" style="flex:1">Import CSV</button>
     </div>
-    <p id="loyalty-import-status" style="font-size:12.5px;color:var(--text-muted);margin:8px 0 0"></p>
+    <p id="loyalty-import-status" style="font-size:15px;color:var(--text-muted);margin:8px 0 0"></p>
   </div>
 
   <div class="form-box" id="loyalty-bookmarklet-box">
     <p>Auto-update via bookmarklet (desktop Chrome)</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">
       Two separate bookmarks, so you can't accidentally pick the wrong one. Click one while logged into a bank or loyalty site yourself, then click a number on the page. Nothing is stored or automated; it only runs the moment you click it.
     </p>
-    <p id="bookmarklet-secret-missing" style="font-size:12.5px;color:var(--danger);margin:0 0 12px;display:none">
+    <p id="bookmarklet-secret-missing" style="font-size:15px;color:var(--danger);margin:0 0 12px;display:none">
       Enter your APP_SECRET in the "Connect your bank" box (More tab) first — the bookmarklet reuses that same secret.
     </p>
     <div class="row">
       <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklets</button>
     </div>
     <div id="bookmarklet-output" style="margin-top:14px;display:none">
-      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Drag both links to your bookmarks bar:</p>
+      <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px">Drag both links to your bookmarks bar:</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:10px">
-        <a id="bookmarklet-link-card" href="#" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">💳 Update Card Balance</a>
-        <a id="bookmarklet-link-points" href="#" style="display:inline-block;padding:8px 16px;background:var(--success);color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;cursor:grab">🎯 Update Points Balance</a>
+        <a id="bookmarklet-link-card" href="#" style="display:inline-block;padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:16px;font-weight:600;text-decoration:none;cursor:grab">💳 Update Card Balance</a>
+        <a id="bookmarklet-link-points" href="#" style="display:inline-block;padding:8px 16px;background:var(--success);color:#fff;border-radius:8px;font-size:16px;font-weight:600;text-decoration:none;cursor:grab">🎯 Update Points Balance</a>
       </div>
-      <p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0">If dragging doesn't work, right-click your bookmarks bar → "Add page" → paste the link's URL manually.</p>
+      <p style="font-size:14px;color:var(--text-muted);margin:8px 0 0">If dragging doesn't work, right-click your bookmarks bar → "Add page" → paste the link's URL manually.</p>
     </div>
   </div>
 
@@ -853,13 +853,13 @@
       <input id="new-card-due" type="date" style="flex:1;min-width:140px" />
     </div>
     <div class="row" style="display:block">
-      <p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px">Categories (pick any that apply)</p>
+      <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px">Categories (pick any that apply)</p>
       <div id="new-card-categories" style="display:flex;flex-wrap:wrap;gap:10px 16px"></div>
       <input id="new-card-other-text" type="text" placeholder="Type your custom category" style="display:none;margin-top:10px;width:100%" />
     </div>
     <div class="row">
       <div style="display:flex;align-items:center;gap:8px">
-        <label for="new-card-color" style="font-size:12.5px;color:var(--text-secondary)">Color</label>
+        <label for="new-card-color" style="font-size:15px;color:var(--text-secondary)">Color</label>
         <input id="new-card-color" type="color" value="#4FA3FF" class="color-picker-input" />
       </div>
       <button class="primary" id="add-card-btn">Add card</button>
@@ -871,7 +871,7 @@
 
   <div class="form-box" id="sync-box">
     <p>Sync across devices</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Optional — connects this tracker to your own free Supabase database so the same data shows up on every device you sign in with the same sync code on.</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Optional — connects this tracker to your own free Supabase database so the same data shows up on every device you sign in with the same sync code on.</p>
     <div id="sync-setup-fields">
       <div class="row">
         <input id="sync-url" type="text" placeholder="Supabase project URL" style="flex:2;min-width:220px" />
@@ -893,27 +893,27 @@
         </div>
       </div>
     </div>
-    <p id="sync-error" style="font-size:12px;color:var(--danger);margin:10px 0 0;display:none"></p>
+    <p id="sync-error" style="font-size:15px;color:var(--danger);margin:10px 0 0;display:none"></p>
   </div>
 
   <div class="form-box" id="plaid-box">
     <p>Connect your bank (experimental)</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand.</p>
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Automatically pull balances, statement amounts, and due dates from your real accounts via Plaid, instead of entering them by hand.</p>
     <div id="plaid-secret-setup">
       <div class="row">
         <input id="plaid-app-secret-input" type="password" placeholder="Your plaid-bridge Worker's APP_SECRET" style="flex:1" />
         <button id="plaid-app-secret-save-btn">Save</button>
       </div>
-      <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never in this file, never synced to Supabase. You'll need to re-enter it on each new device/browser.</p>
+      <p style="font-size:14px;color:var(--text-muted);margin:2px 0 12px">Stored only in this browser's local storage — never in this file, never synced to Supabase. You'll need to re-enter it on each new device/browser.</p>
     </div>
     <div class="row">
       <button class="primary" id="plaid-connect-btn">Connect your bank</button>
       <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
       <button id="plaid-refresh-connections-btn" style="display:none">Show connected banks</button>
     </div>
-    <p id="plaid-status" style="font-size:12px;color:var(--text-secondary);margin:10px 0 0"></p>
-    <p id="plaid-last-sync" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0"></p>
-    <div id="plaid-sync-details" style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
+    <p id="plaid-status" style="font-size:15px;color:var(--text-secondary);margin:10px 0 0"></p>
+    <p id="plaid-last-sync" style="font-size:14px;color:var(--text-muted);margin:4px 0 0"></p>
+    <div id="plaid-sync-details" style="font-size:14px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
     <div id="plaid-connections-list" style="margin:10px 0 0;display:flex;flex-direction:column;gap:6px"></div>
     <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
       <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect ALL banks &amp; delete stored access</button>
@@ -922,7 +922,7 @@
 
   <div class="form-box" id="deleted-cards-box" style="display:none">
     <p>Deleted cards</p>
-    <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 12px">
+    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">
       Cards you've removed. If one was deleted by mistake, restore it here — otherwise Plaid will never re-add it, even if the bank connection is still active.
     </p>
     <div id="deleted-cards-list"></div>
@@ -957,7 +957,7 @@ const CH = {
   get grid() { return this.dark ? '#2C2C36' : '#E3E8F0'; },
   get gridFaint() { return this.dark ? '#1C1C22' : '#EEF1F6'; },
   get zero() { return this.dark ? '#5F5E5A' : '#A8B1C0'; },
-  get text() { return this.dark ? '#EDEDF2' : '#18212F'; },
+  get text() { return this.dark ? '#ECEEF1' : '#18212F'; },
   get totalFill() { return this.dark ? 'rgba(237,237,242,0.06)' : 'rgba(24,33,47,0.05)'; },
   get bg() { return this.dark ? '#08090B' : '#FFFFFF'; },
   get surface() { return this.dark ? '#131519' : '#FFFFFF'; },
@@ -965,6 +965,64 @@ const CH = {
 };
 let pushTimer = null;
 const CARD_CATEGORIES = ['Main spending', 'Groceries', 'Dining & restaurants', 'Gas & transit', 'Travel', 'Cashback (general)', 'Balance transfer', 'Emergency / backup', 'Other'];
+
+
+// ---- Demo mode (?demo=1): fake cards and history, nothing real is read, saved or synced ----
+const DEMO_MODE = /[?&]demo=1\b/.test(location.search);
+if (DEMO_MODE) {
+  (function () {
+    const mem = {};
+    let realTheme = null;
+    try { realTheme = window.localStorage.getItem('cc-tracker-theme'); } catch (e) {}
+    if (realTheme) mem['cc-tracker-theme'] = realTheme;
+    const shim = {
+      getItem: k => (k in mem ? mem[k] : null),
+      setItem: (k, v) => { mem[k] = String(v); },
+      removeItem: k => { delete mem[k]; },
+      clear: () => { Object.keys(mem).forEach(k => delete mem[k]); },
+      key: i => Object.keys(mem)[i] || null,
+      get length() { return Object.keys(mem).length; }
+    };
+    try { Object.defineProperty(window, 'localStorage', { value: shim, configurable: true }); } catch (e) {}
+    window.fetch = () => Promise.reject(new Error('Demo mode: network calls are disabled'));
+    const iso = d => d.toISOString().slice(0, 10);
+    const addDays = n => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
+    const dc = (id, name, balance, apr, color, min, dueIn, limit, cats, extra) => Object.assign({
+      id, name, balance, apr, color, min, dueDate: iso(addDays(dueIn)), limit, categories: cats,
+      cycleAnchor: iso(addDays(dueIn)), cycleStreak: 0, lastHandledCycleIndex: null
+    }, extra || {});
+    const demoCards = [
+      dc('demo-everyday', 'Everyday Cash', 842.17, 24.99, '#3B82F6', 35, 5, 3500, ['Groceries', 'Gas & transit'], { statementBalance: 610.4 }),
+      dc('demo-travel', 'Travel Rewards', 1276.5, 21.49, '#A855F7', 41, 14, 6000, ['Travel', 'Dining & restaurants'], { statementBalance: 1276.5 }),
+      dc('demo-starter', 'Starter Card', 318.9, 27.99, '#F59E0B', 25, 21, 1200, ['Main spending'], { promoApr: 0, promoUntil: iso(addDays(120)) }),
+      dc('demo-cashback', 'Cash Back Plus', 0, 19.99, '#10B981', 0, 26, 2000, ['Cashback (general)'])
+    ];
+    // ~10 weeks of charges and payments (days ago, card, type, amount, note)
+    const ev = [
+      [70, 0, 'charge', 200.0, 'Groceries'], [68, 1, 'charge', 300.0, 'Flights'], [64, 2, 'charge', 90.0, 'Textbooks'],
+      [60, 0, 'payment', 250.0, 'Payment'], [57, 1, 'payment', 300.0, 'Payment'], [53, 3, 'charge', 150.0, 'Gas'],
+      [49, 0, 'charge', 140.0, 'Groceries and gas'], [46, 1, 'payment', 300.0, 'Payment'], [42, 0, 'payment', 250.0, 'Payment'],
+      [40, 2, 'payment', 60.0, 'Payment'], [38, 3, 'payment', 150.0, 'Paid in full'], [36, 1, 'charge', 120.0, 'Dining'],
+      [31, 1, 'payment', 250.0, 'Payment'], [28, 0, 'payment', 200.0, 'Payment'], [26, 0, 'charge', 90.0, 'Groceries'],
+      [24, 1, 'payment', 220.0, 'Payment'], [21, 2, 'payment', 50.0, 'Payment'], [19, 3, 'charge', 55.0, 'Gas'],
+      [17, 0, 'payment', 180.0, 'Payment'], [14, 3, 'payment', 55.0, 'Paid in full'], [13, 1, 'payment', 150.0, 'Payment'],
+      [11, 1, 'charge', 80.0, 'Dining'], [9, 0, 'payment', 130.0, 'Payment'], [8, 2, 'charge', 30.0, 'Subscriptions'],
+      [5, 0, 'charge', 60.0, 'Groceries'], [3, 1, 'charge', 45.0, 'Rideshare']
+    ];
+    const demoHistory = ev.map((e, i) => ({
+      id: 1000 + i, cardId: demoCards[e[1]].id, type: e[2], amount: e[3], note: e[4],
+      date: addDays(-e[0]).toISOString()
+    }));
+    mem['cc-tracker-cards-v2'] = JSON.stringify(demoCards);
+    mem['cc-tracker-history-v2'] = JSON.stringify(demoHistory);
+    mem['cc-tracker-reserves-v2'] = JSON.stringify([{ id: 1, amount: 500, date: addDays(-6).toISOString(), note: 'Set aside from paycheck' }]);
+    mem['cc-tracker-achievements-v2'] = JSON.stringify([{ id: 'first-payment', date: addDays(-60).toISOString() }, { id: 'paid-100', date: addDays(-60).toISOString() }]);
+    window.addEventListener('DOMContentLoaded', () => {
+      const sub = document.querySelector('.subtitle');
+      if (sub) sub.textContent = 'Demo data — sample cards and balances, not real accounts.';
+    });
+  })();
+}
 
 const seedCards = [
   { id: 'amex', name: 'Amex Blue Cash Everyday', balance: 670.03, apr: 28.49, color: '#2E77BB', min: 25, dueDate: '2026-08-20', limit: 1000, categories: ['Groceries', 'Gas & transit'], cycleAnchor: '2026-08-20', cycleStreak: 0, lastHandledCycleIndex: null, promoApr: 0, promoUntil: '2027-05-26' },
@@ -1060,7 +1118,7 @@ let reserveChart = null;
 
 if (window.Chart) {
   Chart.defaults.font.family = "'Inter', sans-serif";
-  Chart.defaults.font.size = 11.5;
+  Chart.defaults.font.size = 13.5;
 }
 
 function esc(s) {
@@ -1204,7 +1262,7 @@ function renderCards() {
         <div class="meta-row editable statement-balance-row" data-card-id="${c.id}"><span>Statement balance</span><span${hasStatement ? '' : ' class="unset"'}>${hasStatement ? fmt(c.statementBalance) : 'Not set'}</span></div>
         <div class="meta-row editable promo-apr-row" data-card-id="${c.id}" style="${isInPromoPeriod(c) ? 'display:block' : ''}">
           ${isInPromoPeriod(c)
-            ? `<div style="display:flex;justify-content:space-between;gap:8px"><span>Promo APR</span><span style="color:var(--success);font-weight:600">${getEffectiveApr(c, 0)}%</span></div><div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">Until ${new Date(c.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
+            ? `<div style="display:flex;justify-content:space-between;gap:8px"><span>Promo APR</span><span style="color:var(--success);font-weight:600">${getEffectiveApr(c, 0)}%</span></div><div style="font-size:14px;color:var(--text-muted);margin-top:2px">Until ${new Date(c.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`
             : `<span>Promo APR</span><span class="unset">None</span>`}
         </div>
       </div>
@@ -1372,8 +1430,8 @@ function renderCards() {
               <input type="number" step="0.01" value="${c.minPercent || ''}" placeholder="% of balance" id="min-percent-edit-${cardId}" style="flex:1" />
               <div class="money-input-wrap" style="flex:1"><input type="number" step="0.01" value="${c.minFloor || ''}" placeholder="Floor $" id="min-floor-edit-${cardId}" style="width:100%" /></div>
             </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Uses whichever is greater — the floor or the percentage — based on ${basisLabel}.</div>
-            <div style="font-size:13px;color:var(--success);font-weight:600;margin-top:6px" id="min-preview-${cardId}">
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Uses whichever is greater — the floor or the percentage — based on ${basisLabel}.</div>
+            <div style="font-size:16px;color:var(--success);font-weight:600;margin-top:6px" id="min-preview-${cardId}">
               Would be: ${fmt(previewFor(basis, c.minPercent, c.minFloor))}
             </div>
           `}
@@ -1439,7 +1497,7 @@ function renderCards() {
           <button data-save="${cardId}">Save</button>
           ${c.statementBalance > 0.005 ? `<button data-clear="${cardId}" style="border-color:var(--danger);color:var(--danger)">Clear</button>` : ''}
         </div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">What your last bill said you owed — separate from your current balance, which may include newer charges.</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">What your last bill said you owed — separate from your current balance, which may include newer charges.</div>
       `;
       row.querySelector('[data-save]').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1516,8 +1574,8 @@ function renderCards() {
       row.style.cursor = 'default';
       row.innerHTML = `
         <span style="display:flex;gap:6px;align-items:center;width:100%" onclick="event.stopPropagation()">
-          <input type="text" value="${esc(c.name)}" id="name-edit-${cardId}" style="flex:1;font-size:15px;font-weight:700" maxlength="60" />
-          <button data-save-name="${cardId}" style="padding:4px 10px;font-size:12px;flex-shrink:0">Save</button>
+          <input type="text" value="${esc(c.name)}" id="name-edit-${cardId}" style="flex:1;font-size:17px;font-weight:700" maxlength="60" />
+          <button data-save-name="${cardId}" style="padding:4px 10px;font-size:15px;flex-shrink:0">Save</button>
         </span>
       `;
       const input = document.getElementById(`name-edit-${cardId}`);
@@ -1562,7 +1620,7 @@ function renderCards() {
       row.innerHTML = `
         <span style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
           <input type="number" step="0.01" value="${c.apr != null ? c.apr : ''}" placeholder="APR %" id="apr-edit-${cardId}" style="width:80px" />
-          <button data-save-apr="${cardId}" style="padding:4px 10px;font-size:12px">Save</button>
+          <button data-save-apr="${cardId}" style="padding:4px 10px;font-size:15px">Save</button>
         </span>
       `;
       row.querySelector('[data-save-apr]').addEventListener('click', (e) => {
@@ -1592,11 +1650,11 @@ function renderCards() {
       row.innerHTML = `
         <div style="width:100%;display:flex;flex-direction:column;gap:8px">
           <div>
-            <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Promo APR %</label>
+            <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:3px">Promo APR %</label>
             <input type="number" step="0.01" value="${c.promoApr != null ? c.promoApr : ''}" placeholder="e.g. 0" id="promo-apr-edit-${cardId}" style="width:100%" />
           </div>
           <div>
-            <label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:3px">Promo ends</label>
+            <label style="display:block;font-size:13px;color:var(--text-muted);margin-bottom:3px">Promo ends</label>
             <input type="date" value="${c.promoUntil || ''}" id="promo-until-edit-${cardId}" style="width:100%" />
           </div>
           <div style="display:flex;gap:6px">
@@ -1681,7 +1739,7 @@ function renderHistory() {
   list.innerHTML = '';
   const sorted = history.filter(h => !h.deleted).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
   if (sorted.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No activity logged yet.</p>';
+    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No activity logged yet.</p>';
     return;
   }
   sorted.forEach(h => {
@@ -1865,7 +1923,7 @@ function renderBarChart() {
   const legend = document.getElementById('split-legend');
   if (legend) {
     legend.innerHTML = active.length === 0
-      ? '<p style="font-size:13px;color:var(--text-muted);margin:0">No card is carrying a balance right now.</p>'
+      ? '<p style="font-size:16px;color:var(--text-muted);margin:0">No card is carrying a balance right now.</p>'
       : active.map(c => `
         <div class="split-item">
           <span class="dot" style="background:${c.color || '#4FA3FF'}"></span>
@@ -2397,7 +2455,7 @@ function renderMonthlyCosts() {
   const list = document.getElementById('monthly-cost-list');
   const active = cards.filter(c => c.balance > 0.005);
   if (active.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--success)">No cards carrying a balance — nothing costing you interest right now.</p>';
+    list.innerHTML = '<p style="font-size:16px;color:var(--success)">No cards carrying a balance — nothing costing you interest right now.</p>';
     return;
   }
   const withCost = active.map(c => ({
@@ -3037,8 +3095,8 @@ function renderPlanner(amount) {
   const allocated = amount - result.leftover;
   const currentTotalOwed = totalOwed();
   html += `<div class="planner-total"><span>Total allocated</span><span>${fmt(allocated)}</span></div>`;
-  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:12.5px;color:var(--text-muted)"><span>Total owed across all cards (right now)</span><span>${fmt(currentTotalOwed)}</span></div>`;
-  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:12.5px;color:var(--text-muted)"><span>Remaining after this payment</span><span>${fmt(Math.max(0, currentTotalOwed - allocated))}</span></div>`;
+  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:15px;color:var(--text-muted)"><span>Total owed across all cards (right now)</span><span>${fmt(currentTotalOwed)}</span></div>`;
+  html += `<div class="planner-total" style="border-top:none;padding-top:0;font-size:15px;color:var(--text-muted)"><span>Remaining after this payment</span><span>${fmt(Math.max(0, currentTotalOwed - allocated))}</span></div>`;
   if (result.leftover > 0.005) {
     html += `<p class="pnote" style="margin-top:6px">All cards paid off, ${fmt(result.leftover)} left over.</p>`;
   }
@@ -3365,7 +3423,7 @@ function renderTarget(targetDateStr) {
   });
 
   const anyUnpaid = detailed.order.some(c => detailed.balances[c.id] > 0.01);
-  const strategyBanner = `<p style="font-size:13px;color:var(--accent-bright);font-weight:600;margin:0 0 12px">Using: ${strategyLabel}</p>`;
+  const strategyBanner = `<p style="font-size:16px;color:var(--accent-bright);font-weight:600;margin:0 0 12px">Using: ${strategyLabel}</p>`;
 
   if (result.reason === 'minimums-enough') {
     resultBox.innerHTML = `
@@ -3392,7 +3450,7 @@ function renderTarget(targetDateStr) {
       </div>
       <div class="savings-stat">
         <p class="s-label">Target date</p>
-        <p class="s-value" style="font-size:15px">${targetLabel}</p>
+        <p class="s-value" style="font-size:17px">${targetLabel}</p>
       </div>
     </div>
     <p class="pnote" style="margin-top:12px">Pay about ${fmt(result.amount)}/month, following the ${strategyLabel} order, to be debt-free by ${targetLabel} (~${targetMonths} month${targetMonths === 1 ? '' : 's'} from now).</p>
@@ -3497,7 +3555,7 @@ function renderWhatIf() {
       </div>
       <div class="savings-stat">
         <p class="s-label">Around</p>
-        <p class="s-value" style="font-size:15px">${target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+        <p class="s-value" style="font-size:17px">${target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
       </div>
       <div class="savings-stat">
         <p class="s-label">Total interest paid</p>
@@ -3764,7 +3822,7 @@ function renderRewards() {
   const historyList = document.getElementById('rewards-history-list');
   const sorted = [...rewards].filter(r => !r.deleted && !r.archived).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
   if (sorted.length === 0) {
-    historyList.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No rewards logged yet.</p>';
+    historyList.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No rewards logged yet.</p>';
   } else {
     historyList.innerHTML = sorted.map(r => {
       const card = cards.find(c => c.id === r.cardId);
@@ -3889,7 +3947,7 @@ function renderLoyaltyPrograms() {
   if (!list) return;
   const active = [...loyaltyPrograms].filter(p => !p.deleted).sort((a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0));
   if (active.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No point/mile balances added yet.</p>';
+    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No point/mile balances added yet.</p>';
   } else {
     list.innerHTML = active.map(p => {
       const days = daysSinceIso(p.lastUpdated);
@@ -3949,8 +4007,8 @@ function renderDeletedCards() {
   box.style.display = 'block';
   list.innerHTML = currentlyDeleted.map(d => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 12px;margin-bottom:6px">
-        <span style="font-size:13px">${esc(d.name || '(unnamed card)')}</span>
-        <button class="reset-link" data-restore-card-id="${esc(d.id)}" style="font-size:12px">Restore</button>
+        <span style="font-size:16px">${esc(d.name || '(unnamed card)')}</span>
+        <button class="reset-link" data-restore-card-id="${esc(d.id)}" style="font-size:15px">Restore</button>
       </div>
     `).join('');
   list.querySelectorAll('[data-restore-card-id]').forEach(btn => {
@@ -4262,7 +4320,7 @@ function renderReserveHistory() {
   list.innerHTML = '';
 
   if (reserves.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No set-aside activity yet.</p>';
+    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No set-aside activity yet.</p>';
     return;
   }
 
@@ -4270,7 +4328,7 @@ function renderReserveHistory() {
   const mode = modeSelect ? modeSelect.value : 'month';
   const visible = combineByBatch(reserves.filter(r => !r.deleted && !r.archived));
   if (visible.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">No set-aside activity yet.</p>';
+    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No set-aside activity yet.</p>';
     return;
   }
   const sorted = [...visible].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -4309,9 +4367,9 @@ function renderReserveHistory() {
     const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
     let bankTag = '';
     if (r.bankBreakdown && r.bankBreakdown.length) {
-      bankTag = `<span style="color:var(--text-muted);font-size:11.5px"> (${r.bankBreakdown.map(b => `${esc(b.bank)} ${fmt(Math.abs(b.amount))}`).join(' + ')})</span>`;
+      bankTag = `<span style="color:var(--text-muted);font-size:14px"> (${r.bankBreakdown.map(b => `${esc(b.bank)} ${fmt(Math.abs(b.amount))}`).join(' + ')})</span>`;
     } else if (r.bank) {
-      bankTag = `<span style="color:var(--text-muted);font-size:11.5px"> (${esc(r.bank)})</span>`;
+      bankTag = `<span style="color:var(--text-muted);font-size:14px"> (${esc(r.bank)})</span>`;
     }
     return `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
   }
@@ -5415,24 +5473,24 @@ document.getElementById('plaid-disconnect-btn').addEventListener('click', async 
 
 async function renderPlaidConnectionsList() {
   const box = document.getElementById('plaid-connections-list');
-  box.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">Loading connected banks…</p>';
+  box.innerHTML = '<p style="font-size:15px;color:var(--text-muted)">Loading connected banks…</p>';
   try {
     const res = await fetch(`${PLAID_BRIDGE_URL}/connections`, { headers: plaidFetchHeaders() });
     const data = await res.json();
     if (!data.ok || !data.connections) {
-      box.innerHTML = '<p style="font-size:12px;color:var(--danger)">Could not load connections.</p>';
+      box.innerHTML = '<p style="font-size:15px;color:var(--danger)">Could not load connections.</p>';
       return;
     }
     if (data.connections.length === 0) {
-      box.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">No banks connected.</p>';
+      box.innerHTML = '<p style="font-size:15px;color:var(--text-muted)">No banks connected.</p>';
       return;
     }
     box.innerHTML = data.connections.map(c => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border-radius:8px;padding:8px 12px">
-        <span style="font-size:13px">${esc(c.institution_name)}</span>
+        <span style="font-size:16px">${esc(c.institution_name)}</span>
         <span style="display:flex;gap:10px">
-          <button class="reset-link" data-reconnect-item="${esc(c.item_id)}" style="font-size:12px">Reconnect</button>
-          <button class="reset-link" data-disconnect-item="${esc(c.item_id)}" style="color:var(--danger);font-size:12px">Disconnect this one</button>
+          <button class="reset-link" data-reconnect-item="${esc(c.item_id)}" style="font-size:15px">Reconnect</button>
+          <button class="reset-link" data-disconnect-item="${esc(c.item_id)}" style="color:var(--danger);font-size:15px">Disconnect this one</button>
         </span>
       </div>
     `).join('');
@@ -5510,7 +5568,7 @@ async function renderPlaidConnectionsList() {
       });
     });
   } catch (err) {
-    box.innerHTML = `<p style="font-size:12px;color:var(--danger)">Could not reach the connection service: ${esc(err.message)}</p>`;
+    box.innerHTML = `<p style="font-size:15px;color:var(--danger)">Could not reach the connection service: ${esc(err.message)}</p>`;
   }
 }
 
