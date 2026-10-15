@@ -5428,7 +5428,25 @@ document.getElementById('plaid-sync-btn').addEventListener('click', async () => 
 
 refreshPlaidButtonState();
 refreshPlaidSecretSetupUI();
-syncPlaidConnectedFlagWithReality();
+
+// Auto-sync: every time the app opens (or comes back to the foreground), pull fresh
+// balances from Plaid, unless that already happened in the last 10 minutes.
+const AUTO_PLAID_SYNC_GAP_MS = 10 * 60 * 1000;
+function autoPlaidSyncIfDue() {
+  try {
+    if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+    if (!getPlaidAppSecret()) return;
+    if (localStorage.getItem('cc-tracker-plaid-connected') !== 'true') return;
+    const last = Number(localStorage.getItem('cc-tracker-last-auto-plaid') || 0);
+    if (Date.now() - last < AUTO_PLAID_SYNC_GAP_MS) return;
+    const btn = document.getElementById('plaid-sync-btn');
+    if (!btn || btn.disabled) return;
+    localStorage.setItem('cc-tracker-last-auto-plaid', String(Date.now()));
+    btn.click();
+  } catch (e) { /* auto-sync is a convenience; never break the app over it */ }
+}
+Promise.resolve(syncPlaidConnectedFlagWithReality()).catch(() => {}).then(autoPlaidSyncIfDue);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoPlaidSyncIfDue(); });
 
 document.getElementById('manual-log-toggle-btn').addEventListener('click', () => {
   manualLogFormForcedOpen = !manualLogFormForcedOpen;
