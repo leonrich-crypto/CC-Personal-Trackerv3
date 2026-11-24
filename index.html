@@ -7450,7 +7450,6 @@ async function unlockCodeCall(path, body) {
 document.getElementById('lock-email-btn').addEventListener('click', async (e) => {
   const err = document.getElementById('lock-err');
   const btn = e.currentTarget;
-  if (!getPlaidAppSecret()) { err.textContent = "This device doesn't have your APP_SECRET saved, so it can't ask for a code."; const r = document.getElementById('lock-reset-btn'); const sc = getSyncConfig ? getSyncConfig() : null; if (sc && sc.code) r.hidden = false; return; }
   btn.disabled = true; err.textContent = '';
   try {
     const r = await unlockCodeCall('/unlock-code/send');
