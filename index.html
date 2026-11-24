@@ -1080,6 +1080,67 @@
   .ach-all { margin-top: 4px; }
   .ach-all .ach-grid:last-child { margin-bottom: 0; }
   .ach-next { margin-bottom: 4px; }
+
+  /* Total owed: full card on Overview, one slim line on every other tab */
+  body[data-tab]:not([data-tab="overview"]) .hero-card { display: flex !important; flex-wrap: nowrap; align-items: center; gap: 20px; padding: 12px 18px; margin-bottom: 14px; border-radius: 14px; }
+  body[data-tab]:not([data-tab="overview"]) .hero-card .summary { margin: 0 !important; flex: 0 0 auto; }
+  body[data-tab]:not([data-tab="overview"]) .hero-main { display: flex; align-items: baseline; gap: 10px; }
+  body[data-tab]:not([data-tab="overview"]) .hero-main .label { margin: 0 !important; font-size: 14px !important; }
+  body[data-tab]:not([data-tab="overview"]) #total-owed { font-size: 22px !important; letter-spacing: -0.3px !important; line-height: 1.2 !important; }
+  body[data-tab]:not([data-tab="overview"]) .delta-row,
+  body[data-tab]:not([data-tab="overview"]) .delta-was,
+  body[data-tab]:not([data-tab="overview"]) .p-togo,
+  body[data-tab]:not([data-tab="overview"]) .progress-caption,
+  body[data-tab]:not([data-tab="overview"]) .progress-ticks { display: none !important; }
+  body[data-tab]:not([data-tab="overview"]) .hero-card .progress-wrap { flex: 1 1 auto; min-width: 0; display: flex !important; align-items: center; gap: 12px; border: 0 !important; padding: 0 !important; margin: 0; }
+  body[data-tab]:not([data-tab="overview"]) .hero-card .progress-wrap[style*="display: none"] { display: none !important; }
+  body[data-tab]:not([data-tab="overview"]) .p-top { margin: 0; flex: 0 0 auto; }
+  body[data-tab]:not([data-tab="overview"]) .p-big { font-size: 15px !important; }
+  body[data-tab]:not([data-tab="overview"]) .p-big #progress-pct { font-size: 15px !important; font-weight: 700; }
+  body[data-tab]:not([data-tab="overview"]) .p-big small { font-size: 13px !important; }
+  body[data-tab]:not([data-tab="overview"]) .progress-track { flex: 1 1 auto; height: 6px !important; margin: 0 !important; }
+  @media (max-width: 520px) {
+    body[data-tab]:not([data-tab="overview"]) .hero-card { gap: 12px; padding: 10px 14px; }
+    body[data-tab]:not([data-tab="overview"]) .hero-main .label { display: none; }
+    body[data-tab]:not([data-tab="overview"]) #total-owed { font-size: 20px !important; }
+  }
+
+  /* Smooth tab changes: a quick cross-fade (or a short fade-up where cross-fades aren't supported) */
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.18s; animation-timing-function: ease-out; }
+  .tab-bar { view-transition-name: tabbar; }
+  ::view-transition-group(tabbar) { animation: none; }
+  .tab-panel.tab-enter { animation: tab-in 0.2s ease-out; }
+  @keyframes tab-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Page flip: the old page blurs away, the new one comes in from a soft blur */
+  .header-row { view-transition-name: apphdr; }
+  ::view-transition-group(apphdr) { animation: none; }
+  ::view-transition-old(root) { animation: page-out 0.16s ease-in both; }
+  ::view-transition-new(root) { animation: page-in 0.34s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes page-out { to { opacity: 0; filter: blur(6px); transform: scale(0.99); } }
+  @keyframes page-in { from { opacity: 0; filter: blur(10px); transform: translateY(10px) scale(0.995); } to { opacity: 1; filter: none; transform: none; } }
+  .tab-panel.tab-enter { animation: page-in 0.32s cubic-bezier(.2,.8,.2,1); }
+
+  /* Loading sheen across the blocks */
+  .tab-panel.shimmer :is(.form-box, .tile, .block, .insight), body.refreshing .hero-card { position: relative; overflow: hidden; }
+  .tab-panel.shimmer :is(.form-box, .tile, .block, .insight)::after, body.refreshing .hero-card::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 1;
+    background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--text-primary) 9%, transparent) 50%, transparent 65%);
+    background-size: 250% 100%; background-position: 130% 0; animation: sheen 0.75s ease-out forwards;
+  }
+  body.refreshing .tab-panel.shimmer :is(.form-box, .tile, .block, .insight)::after, body.refreshing .hero-card::after { animation: sheen 1.1s ease-in-out infinite; }
+  @keyframes sheen { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+  body.refreshing .tab-panel { filter: saturate(0.85); transition: filter 0.2s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+    .tab-panel.tab-enter { animation: none; }
+    .tab-panel.shimmer :is(.form-box, .tile, .block, .insight)::after, body.refreshing .hero-card::after { display: none; }
+  }
+  .lock-alt { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 4px; }
+  .lock-code { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .lock-code .lock-sub { margin: 0; }
+  #lock-code-input { width: 100%; max-width: 220px; text-align: center; font-size: 24px !important; letter-spacing: 8px; font-variant-numeric: tabular-nums; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); }
+  .lock-alt .reset-link { background: transparent !important; border: 0 !important; min-height: 0 !important; padding: 6px 8px !important; }
 </style>
 </head>
 <body>
@@ -1090,7 +1151,15 @@
     <p class="lock-sub">Use Face ID, Touch ID, your fingerprint or your device PIN to open it.</p>
     <button type="button" class="primary" id="lock-unlock-btn">Unlock</button>
     <p class="lock-err" id="lock-err" role="alert"></p>
-    <button type="button" class="reset-link" id="lock-reset-btn" hidden>Can't unlock? Turn the lock off</button>
+    <div class="lock-alt" id="lock-alt" hidden>
+      <button type="button" class="reset-link" id="lock-email-btn">Email me a code instead</button>
+      <div class="lock-code" id="lock-code" hidden>
+        <p class="lock-sub" id="lock-code-msg"></p>
+        <input id="lock-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="Unlock code" />
+        <button type="button" class="primary" id="lock-code-btn">Unlock with code</button>
+      </div>
+      <button type="button" class="reset-link" id="lock-reset-btn" hidden>Use my sync code instead</button>
+    </div>
   </div>
 </div>
 <script>
@@ -1487,6 +1556,12 @@
     <p>App lock</p>
     <p class="box-sub">Ask for Face ID, Touch ID, your fingerprint or device PIN when the app opens on this device. It hides the screen from anyone who picks up your phone; it doesn't encrypt your data.</p>
     <div id="lock-settings"></div>
+  </div>
+
+  <div class="form-box" id="reminders-box">
+    <p>Phone reminders</p>
+    <p class="box-sub">Get a notification on this device before each card is due, even when the app is closed. Sent by your own cc-push Worker.</p>
+    <div id="reminder-settings"></div>
   </div>
 
   <div class="form-box" id="plaid-box">
@@ -6931,6 +7006,7 @@ function initSync() {
 }
 
 function switchTab(tabName) {
+  document.body.dataset.tab = tabName;
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
   });
@@ -6948,9 +7024,28 @@ function switchTab(tabName) {
 
 document.getElementById('tab-bar').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab-btn');
-  if (!btn) return;
-  switchTab(btn.getAttribute('data-tab'));
+  if (!btn || btn.classList.contains('active')) return;
+  const go = () => switchTab(btn.getAttribute('data-tab'));
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (document.startViewTransition && !reduce) document.startViewTransition(go).finished.then(() => shimmerPanel(), () => {});
+  else {
+    go();
+    const panel = document.querySelector('.tab-panel.active');
+    if (panel && !reduce) { panel.classList.remove('tab-enter'); void panel.offsetWidth; panel.classList.add('tab-enter'); }
+    if (!reduce) shimmerPanel();
+  }
 });
+
+// A quick loading sheen across the blocks on the current page.
+function shimmerPanel(ms = 750) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const panel = document.querySelector('.tab-panel.active');
+  if (!panel) return;
+  panel.classList.remove('shimmer'); void panel.offsetWidth; panel.classList.add('shimmer');
+  clearTimeout(panel._shimmerT);
+  panel._shimmerT = setTimeout(() => panel.classList.remove('shimmer'), ms);
+}
+document.body.dataset.tab = (document.querySelector('.tab-btn.active') || {}).dataset ? document.querySelector('.tab-btn.active').dataset.tab : 'overview';
 
 function applyThemeButtonLabel() {
   const b = document.getElementById('theme-toggle');
@@ -7066,6 +7161,8 @@ document.getElementById('add-btn').addEventListener('click', () => {
     busy = true;
     ptr.classList.add('spin');
     ptr.style.transform = 'translate(-50%, 56px)';
+    document.body.classList.add('refreshing');
+    if (typeof shimmerPanel === 'function') shimmerPanel(1100);
     if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
     try {
       const plaidBtn = document.getElementById('plaid-sync-btn');
@@ -7077,6 +7174,9 @@ document.getElementById('add-btn').addEventListener('click', () => {
     setTimeout(() => {
       ptr.classList.remove('spin', 'show', 'ready');
       ptr.style.transform = '';
+      document.body.classList.remove('refreshing');
+      const panel = document.querySelector('.tab-panel.active');
+      if (panel) { panel.classList.remove('tab-enter'); void panel.offsetWidth; panel.classList.add('tab-enter'); }
       busy = false;
     }, 1100);
   });
@@ -7134,8 +7234,10 @@ document.getElementById('lock-unlock-btn').addEventListener('click', async () =>
     unlockedNow();
   } catch (e) {
     lockFailures++;
-    err.textContent = e && e.name === 'NotAllowedError' ? "That didn't work. Try again." : "Couldn't check your Face ID or fingerprint. Try again.";
-    if (lockFailures >= 2) document.getElementById('lock-reset-btn').hidden = false;
+    err.textContent = e && e.name === 'NotAllowedError' ? "That didn't work. Try again, or get a code by email." : "Couldn't check your Face ID or fingerprint. Try again, or get a code by email.";
+    document.getElementById('lock-alt').hidden = false;
+    const sc = typeof getSyncConfig === 'function' ? getSyncConfig() : null;
+    if (lockFailures >= 2 && sc && sc.code) document.getElementById('lock-reset-btn').hidden = false;
   }
 });
 document.getElementById('lock-reset-btn').addEventListener('click', () => {
@@ -7167,7 +7269,7 @@ async function renderLockSettings() {
     const ok = await lockSupported();
     box.innerHTML = ok
       ? '<button type="button" class="primary" id="lock-on-btn">Turn on app lock</button><p class="lock-msg" id="lock-msg"></p>'
-      : '<p class="sa-empty" style="padding:0">This browser can\'t use Face ID, Touch ID or a fingerprint reader here. On iPhone, add the app to your Home Screen and open it from there.</p>';
+      : '<p class="sa-empty" style="padding:0">This browser or device can\'t use Face ID, Touch ID, a fingerprint reader or Windows Hello for this site. Try the app on your phone.</p>';
     const on = document.getElementById('lock-on-btn');
     if (on) on.addEventListener('click', async () => {
       try { await turnOnLock(); renderLockSettings(); }
@@ -7193,6 +7295,197 @@ async function renderLockSettings() {
   });
 }
 renderLockSettings();
+
+// ================= Phone reminders (Web Push via your cc-push Worker) =================
+const PUSH_WORKER_URL = 'https://cc-push.leonrichard074.workers.dev';
+function getRemCfg() { try { return JSON.parse(localStorage.getItem('cc-tracker-reminders') || 'null'); } catch (e) { return null; } }
+function setRemCfg(c) { try { c ? localStorage.setItem('cc-tracker-reminders', JSON.stringify(c)) : localStorage.removeItem('cc-tracker-reminders'); } catch (e) {} }
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+// Reminders for this cycle (with the minimum) and the next two (date only), within ~70 days.
+function buildReminderSchedule(daysList) {
+  const out = [];
+  const now = Date.now();
+  const horizon = now + 70 * 86400000;
+  cards.filter(c => c.balance > 0.005 && c.dueDate).forEach(c => {
+    for (let cycle = 0; cycle < 3; cycle++) {
+      const due = new Date(c.dueDate + 'T09:00:00');
+      if (cycle) due.setMonth(due.getMonth() + cycle);
+      const dueLabel = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const iso = due.toLocaleDateString('en-CA');
+      daysList.forEach(d => {
+        const at = new Date(due); at.setDate(at.getDate() - d);
+        if (at.getTime() < now - 3600000 || at.getTime() > horizon) return;
+        const min = cycle === 0 && (c.min || 0) > 0.005 ? `${fmt(c.min)} minimum ` : 'payment ';
+        out.push({
+          id: `${c.id}:${iso}:${d}`, at: at.getTime(),
+          title: d === 1 ? 'Payment due tomorrow' : `Payment due in ${d} days`,
+          body: `${c.name}: ${min}due ${dueLabel}`, url: './'
+        });
+      });
+    }
+  });
+  return out.sort((a, b) => a.at - b.at).slice(0, 60);
+}
+
+async function pushPost(path, body) {
+  const res = await fetch(PUSH_WORKER_URL + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-App-Secret': getPlaidAppSecret() || '' },
+    body: JSON.stringify(body)
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+async function currentPushSub() {
+  if (!('serviceWorker' in navigator)) return null;
+  const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, rej) => setTimeout(() => rej(new Error('The app\'s service worker isn\'t running yet. Reload and try again.')), 8000))]);
+  return { reg, sub: await reg.pushManager.getSubscription() };
+}
+
+let remSyncTimer = null;
+async function syncReminders(force) {
+  const cfg = getRemCfg();
+  if (!cfg || !cfg.on || (typeof DEMO_MODE !== 'undefined' && DEMO_MODE)) return;
+  try {
+    const cur = await currentPushSub();
+    if (!cur || !cur.sub) return;
+    const reminders = buildReminderSchedule(cfg.days || [3]);
+    const hash = JSON.stringify(reminders.map(r => [r.id, r.at, r.body]));
+    if (!force && hash === cfg.lastHash && Date.now() - (cfg.lastSync || 0) < 12 * 3600000) return;
+    await pushPost('/subscribe', { subscription: cur.sub.toJSON(), reminders });
+    const c = getRemCfg(); if (c) { c.lastHash = hash; c.lastSync = Date.now(); c.count = reminders.length; setRemCfg(c); }
+  } catch (e) { /* try again next time */ }
+}
+function scheduleReminderSync() { clearTimeout(remSyncTimer); remSyncTimer = setTimeout(() => syncReminders(false), 4000); }
+{
+  const baseSaveData = saveData;
+  saveData = function () { const r = baseSaveData.apply(this, arguments); scheduleReminderSync(); return r; };
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleReminderSync(); });
+setTimeout(() => syncReminders(false), 2500);
+
+async function turnOnReminders(days) {
+  if (!getPlaidAppSecret()) throw new Error('Enter your APP_SECRET under "Connect your bank" first. Reminders use the same secret.');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    throw new Error(isIOS() && !isStandalone() ? 'On iPhone, add the app to your Home Screen first, then open it from there and turn reminders on.' : "This browser can't receive push notifications.");
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('Notifications are blocked. Allow them for this site in your settings, then try again.');
+  const { reg, sub: existing } = await currentPushSub();
+  const keyRes = await fetch(PUSH_WORKER_URL + '/vapid-public-key').then(r => r.json()).catch(() => ({}));
+  if (!keyRes.key) throw new Error("Couldn't reach your cc-push Worker. Check that it's deployed with its VAPID keys.");
+  const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u.dec(keyRes.key) });
+  const reminders = buildReminderSchedule(days);
+  await pushPost('/subscribe', { subscription: sub.toJSON(), reminders });
+  setRemCfg({ on: true, days, lastHash: JSON.stringify(reminders.map(r => [r.id, r.at, r.body])), lastSync: Date.now(), count: reminders.length });
+}
+
+async function renderReminderSettings(msg) {
+  const box = document.getElementById('reminder-settings');
+  if (!box) return;
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { box.innerHTML = '<p class="sa-empty" style="padding:0">Not available in demo mode.</p>'; return; }
+  const cfg = getRemCfg();
+  const daysVal = cfg && cfg.days ? cfg.days.join(',') : '3';
+  const opt = (v, label) => `<option value="${v}"${daysVal === v ? ' selected' : ''}>${label}</option>`;
+  const daySelect = `<label class="lock-after">Remind me <select id="rem-days">${opt('3', '3 days before')}${opt('1', 'The day before')}${opt('3,1', '3 days and 1 day before')}</select></label>`;
+  if (!cfg || !cfg.on) {
+    box.innerHTML = `<div class="lock-row">${daySelect}<button type="button" class="primary" id="rem-on-btn">Turn on reminders</button></div><p class="lock-msg" id="rem-msg">${msg || ''}</p>`;
+    document.getElementById('rem-on-btn').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try {
+        await turnOnReminders(document.getElementById('rem-days').value.split(',').map(Number));
+        renderReminderSettings();
+      } catch (err) { renderReminderSettings(err.message || String(err)); }
+    });
+    return;
+  }
+  box.innerHTML = `
+    <div class="lock-row">
+      <span class="lock-on"><i></i>On for this device</span>
+      ${daySelect}
+      <button type="button" id="rem-test-btn">Send a test</button>
+      <button type="button" class="reset-link danger-link" id="rem-off-btn">Turn off</button>
+    </div>
+    <p class="box-sub" style="margin:10px 0 0">${cfg.count != null ? `${cfg.count} reminder${cfg.count === 1 ? '' : 's'} scheduled over the next couple of months. ` : ''}They update on their own when your due dates change.</p>
+    <p class="lock-msg" id="rem-msg">${msg || ''}</p>`;
+  document.getElementById('rem-days').addEventListener('change', async (e) => {
+    const c = getRemCfg(); if (!c) return;
+    c.days = e.target.value.split(',').map(Number); setRemCfg(c);
+    await syncReminders(true); renderReminderSettings();
+  });
+  document.getElementById('rem-test-btn').addEventListener('click', async () => {
+    try {
+      const cur = await currentPushSub();
+      const r = await pushPost('/test', { subscription: cur.sub.toJSON() });
+      renderReminderSettings(r.ok ? '' : `The push service answered ${r.status}. Try turning reminders off and on again.`);
+      if (r.ok) { const m = document.getElementById('rem-msg'); if (m) { m.style.color = 'var(--success)'; m.textContent = 'Test sent. It should show up in a few seconds.'; } }
+    } catch (err) { renderReminderSettings(err.message || String(err)); }
+  });
+  document.getElementById('rem-off-btn').addEventListener('click', async () => {
+    try {
+      const cur = await currentPushSub();
+      if (cur && cur.sub) { await pushPost('/unsubscribe', { subscription: cur.sub.toJSON() }).catch(() => {}); await cur.sub.unsubscribe().catch(() => {}); }
+    } catch (e) {}
+    setRemCfg(null); renderReminderSettings();
+  });
+}
+renderReminderSettings();
+
+// "Email me a code": your cc-reminder Worker emails a 6-digit code to the address set in Cloudflare.
+const UNLOCK_WORKER_URL = 'https://cc-reminder.leonrichard074.workers.dev';
+async function unlockCodeCall(path, body) {
+  const res = await fetch(UNLOCK_WORKER_URL + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-App-Secret': getPlaidAppSecret() || '' },
+    body: JSON.stringify(body || {})
+  });
+  let data = {}; try { data = await res.json(); } catch (e) {}
+  if (res.status === 401) throw new Error("This device's APP_SECRET doesn't match your cc-reminder Worker.");
+  return data;
+}
+document.getElementById('lock-email-btn').addEventListener('click', async (e) => {
+  const err = document.getElementById('lock-err');
+  const btn = e.currentTarget;
+  if (!getPlaidAppSecret()) { err.textContent = "This device doesn't have your APP_SECRET saved, so it can't ask for a code."; const r = document.getElementById('lock-reset-btn'); const sc = getSyncConfig ? getSyncConfig() : null; if (sc && sc.code) r.hidden = false; return; }
+  btn.disabled = true; err.textContent = '';
+  try {
+    const r = await unlockCodeCall('/unlock-code/send');
+    if (!r.ok) { err.textContent = r.error || "Couldn't send a code."; return; }
+    document.getElementById('lock-code').hidden = false;
+    document.getElementById('lock-code-msg').textContent = `We sent a 6-digit code to ${r.to}. It works for 10 minutes.`;
+    btn.textContent = 'Send a new code';
+    setTimeout(() => document.getElementById('lock-code-input').focus(), 50);
+  } catch (ex) { err.textContent = ex.message || "Couldn't reach your cc-reminder Worker."; }
+  finally { btn.disabled = false; }
+});
+async function submitUnlockCode() {
+  const err = document.getElementById('lock-err');
+  const input = document.getElementById('lock-code-input');
+  const code = input.value.replace(/\D/g, '');
+  if (code.length !== 6) { err.textContent = 'Enter the 6 digits from the email.'; return; }
+  err.textContent = '';
+  try {
+    const r = await unlockCodeCall('/unlock-code/verify', { code });
+    if (!r.ok) { err.textContent = r.error || "That code didn't work."; input.select(); return; }
+    // Face ID couldn't open the app, so its saved key is probably gone: switch the lock off
+    // until it's set up again, rather than locking you out on the next open.
+    setLockCfg(null);
+    input.value = '';
+    document.getElementById('lock-alt').hidden = true;
+    document.getElementById('lock-code').hidden = true;
+    lockFailures = 0;
+    unlockedNow();
+    renderLockSettings();
+    showReminder('Unlocked with an email code', 'The app lock is off on this device for now. Turn it back on in More, App lock, to set up Face ID again.');
+  } catch (ex) { err.textContent = ex.message || "Couldn't reach your cc-reminder Worker."; }
+}
+document.getElementById('lock-code-btn').addEventListener('click', submitUnlockCode);
+document.getElementById('lock-code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitUnlockCode(); });
+document.getElementById('lock-code-input').addEventListener('input', (e) => { if (e.target.value.replace(/\D/g, '').length === 6) submitUnlockCode(); });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
