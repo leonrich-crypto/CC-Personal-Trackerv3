@@ -1,82 +1,61 @@
-// Bump this version string every time you deploy a new version of the app,
-// so the service worker knows to replace its cached copy. If you forget to
-// bump it, the app will still work (network-first means online users always
-// get the live version) -- this only affects the OFFLINE fallback copy.
-const CACHE_VERSION = 'cc-tracker-v1';
-const CACHE_NAME = `cc-tracker-cache-${CACHE_VERSION}`;
+// Service worker for the Credit Card Payoff Tracker.
+// - Opens offline: keeps a copy of the page, but always prefers the live version.
+// - Shows due-date reminders sent by the cc-push Worker, even when the app is closed.
 
-// Everything needed to load the app shell with no network connection.
-const APP_SHELL = [
-  './',
-  './index.html',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
-];
+const CACHE = 'payoff-tracker-v4';
+const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Cache each shell resource independently (not with addAll, which is
-      // all-or-nothing) so a failure on one -- e.g. the Chart.js CDN being
-      // briefly unreachable -- doesn't prevent the core app page itself
-      // from being cached for offline use.
-      return Promise.allSettled(
-        APP_SHELL.map((url) => {
-          const isCrossOrigin = /^https?:\/\//.test(url);
-          // Cross-origin resources are requested no-cors so a missing CORS
-          // header on the CDN's end can't block caching an opaque copy.
-          const req = isCrossOrigin ? new Request(url, { mode: 'no-cors' }) : url;
-          return cache.add(req);
-        })
-      );
-    })
-  );
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names
-          .filter((name) => name.startsWith('cc-tracker-cache-') && name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+  })());
 });
 
+// Network first for the page itself, so updates show up right away;
+// fall back to the saved copy when offline. Everything else goes straight to the network.
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests for the app shell and its CDN dependency.
-  // Supabase sync calls and anything else pass straight through to the
-  // network untouched -- we never want to accidentally serve stale synced
-  // data from a cache.
   const req = event.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  if (req.mode !== 'navigate') return;
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      const copy = fresh.clone();
+      caches.open(CACHE).then(c => c.put('./index.html', copy)).catch(() => {});
+      return fresh;
+    } catch (e) {
+      return (await caches.match('./index.html')) || (await caches.match('./')) || Response.error();
+    }
+  })());
+});
 
-  const isAppShellRequest =
-    req.mode === 'navigate' ||
-    req.url.endsWith('/index.html') ||
-    req.url.includes('cdnjs.cloudflare.com/ajax/libs/Chart.js');
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { title: 'Payoff Tracker', body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'Payoff Tracker';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    tag: data.tag || 'payoff-reminder',
+    renotify: true,
+    data: { url: data.url || './' }
+  }));
+});
 
-  if (!isAppShellRequest) return;
-
-  event.respondWith(
-    fetch(req)
-      .then((networkRes) => {
-        // Online: always prefer the live version, and refresh the offline
-        // fallback copy in the background so it stays reasonably current.
-        const clone = networkRes.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-        return networkRes;
-      })
-      .catch(() => {
-        // Offline: fall back to whatever was last successfully cached.
-        return caches.match(req).then((cached) => {
-          if (cached) return cached;
-          if (req.mode === 'navigate') return caches.match('./index.html');
-          return Response.error();
-        });
-      })
-  );
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || './', self.registration.scope).href;
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.startsWith(self.registration.scope)) { await c.focus(); return; }
+    }
+    await self.clients.openWindow(target);
+  })());
 });
