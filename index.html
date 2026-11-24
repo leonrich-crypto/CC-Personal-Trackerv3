@@ -1141,6 +1141,27 @@
   .lock-code .lock-sub { margin: 0; }
   #lock-code-input { width: 100%; max-width: 220px; text-align: center; font-size: 24px !important; letter-spacing: 8px; font-variant-numeric: tabular-nums; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); }
   .lock-alt .reset-link { background: transparent !important; border: 0 !important; min-height: 0 !important; padding: 6px 8px !important; }
+  /* Phone reminders: tucked away once on */
+  #reminders-box.rem-compact { padding: 14px 18px; }
+  #reminders-box.rem-compact > p:first-of-type { display: none; }
+  #reminders-box.rem-compact > .box-sub { display: none; }
+  #reminders-box.rem-compact #reminder-settings::before { content: 'Phone reminders'; display: block; font-weight: 600; font-size: 15px; color: var(--text-primary); margin-bottom: 6px; }
+  .rem-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+  .rem-when { font-size: 14px; color: var(--text-muted); flex: 1 1 220px; }
+  .rem-actions { display: inline-flex; gap: 16px; }
+  .rem-actions .reset-link { font-size: 14px; }
+  #reminders-box.rem-compact .lock-msg:empty { display: none; }
+
+  /* Entrance: blocks rise in one by one; numbers fade from faint to solid */
+  .anim-block { animation: block-in 0.3s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+  .anim-num { animation: num-in 0.35s ease-out both; animation-delay: var(--nd, 70ms); }
+  @keyframes block-in { from { opacity: 0; transform: translateY(10px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes num-in { from { opacity: 0.1; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .anim-block, .anim-num { animation: none !important; } }
+  .dedupe-box { align-items: flex-start; flex-wrap: wrap; }
+  .dedupe-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .dedupe-actions .primary { padding: 7px 14px; font-size: 14px; }
+  @media (max-width: 520px) { .dedupe-actions { width: 100%; padding-left: 24px; } .dedupe-actions button { flex: 1; } }
 </style>
 </head>
 <body>
@@ -1639,6 +1660,7 @@
       <button id="restore-dates-btn">Restore original due dates</button>
     </div>
     <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
+    <p class="box-sub" id="dedupe-status" style="margin:14px 0 0" hidden></p>
     <div class="data-danger">
       <button class="reset-link" id="reset-tracking-btn">Restart progress (keeps cards and balances)</button>
       <button class="reset-link danger-link" id="reset-btn">Reset all data</button>
@@ -7025,15 +7047,8 @@ function switchTab(tabName) {
 document.getElementById('tab-bar').addEventListener('click', (e) => {
   const btn = e.target.closest('.tab-btn');
   if (!btn || btn.classList.contains('active')) return;
-  const go = () => switchTab(btn.getAttribute('data-tab'));
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (document.startViewTransition && !reduce) document.startViewTransition(go).finished.then(() => shimmerPanel(), () => {});
-  else {
-    go();
-    const panel = document.querySelector('.tab-panel.active');
-    if (panel && !reduce) { panel.classList.remove('tab-enter'); void panel.offsetWidth; panel.classList.add('tab-enter'); }
-    if (!reduce) shimmerPanel();
-  }
+  switchTab(btn.getAttribute('data-tab'));
+  requestAnimationFrame(() => animateIn());
 });
 
 // A quick loading sheen across the blocks on the current page.
@@ -7175,8 +7190,7 @@ document.getElementById('add-btn').addEventListener('click', () => {
       ptr.classList.remove('spin', 'show', 'ready');
       ptr.style.transform = '';
       document.body.classList.remove('refreshing');
-      const panel = document.querySelector('.tab-panel.active');
-      if (panel) { panel.classList.remove('tab-enter'); void panel.offsetWidth; panel.classList.add('tab-enter'); }
+      if (typeof animateIn === 'function') animateIn();
       busy = false;
     }, 1100);
   });
@@ -7303,30 +7317,158 @@ function setRemCfg(c) { try { c ? localStorage.setItem('cc-tracker-reminders', J
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-// Reminders for this cycle (with the minimum) and the next two (date only), within ~70 days.
-function buildReminderSchedule(daysList) {
+// Automatic heads-ups before every due date, matching the email reminders' rhythm.
+const REMINDER_DAYS = [14, 7, 5, 3];
+const whenLabel = d => d === 14 ? 'in 2 weeks' : d === 7 ? 'in 1 week' : d === 1 ? 'tomorrow' : `in ${d} days`;
+function shortHash(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function fitLines(lines, max = 196) {
   const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const next = [...out, lines[i]].join('\n');
+    if (next.length > max) { const left = lines.length - i; out.push(`…and ${left} more in the app`); break; }
+    out.push(lines[i]);
+  }
+  return out.join('\n').slice(0, 200);
+}
+
+// Rich reminders like the emails: minimum, balance, interest, set-aside, streak.
+// Reminders that land on the same day are combined into one notification.
+function buildReminderSchedule() {
   const now = Date.now();
-  const horizon = now + 70 * 86400000;
+  const horizon = now + 50 * 86400000;
+  const setAside = reserves.filter(r => !r.deleted).reduce((s, r) => s + r.amount, 0);
+  const items = [];
   cards.filter(c => c.balance > 0.005 && c.dueDate).forEach(c => {
-    for (let cycle = 0; cycle < 3; cycle++) {
+    for (let cycle = 0; cycle < 2; cycle++) {
+      if (cycle === 0 && !((c.min || 0) > 0.005)) continue;   // like the emails: skip a genuine $0 minimum
       const due = new Date(c.dueDate + 'T09:00:00');
       if (cycle) due.setMonth(due.getMonth() + cycle);
-      const dueLabel = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const iso = due.toLocaleDateString('en-CA');
-      daysList.forEach(d => {
+      REMINDER_DAYS.forEach(d => {
         const at = new Date(due); at.setDate(at.getDate() - d);
         if (at.getTime() < now - 3600000 || at.getTime() > horizon) return;
-        const min = cycle === 0 && (c.min || 0) > 0.005 ? `${fmt(c.min)} minimum ` : 'payment ';
-        out.push({
-          id: `${c.id}:${iso}:${d}`, at: at.getTime(),
-          title: d === 1 ? 'Payment due tomorrow' : `Payment due in ${d} days`,
-          body: `${c.name}: ${min}due ${dueLabel}`, url: './'
-        });
+        items.push({ c, cycle, d, at: at.getTime(), due, iso: due.toLocaleDateString('en-CA'), dueLabel: due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) });
       });
     }
   });
+  const byDay = {};
+  items.forEach(it => { const k = new Date(it.at).toLocaleDateString('en-CA'); (byDay[k] = byDay[k] || []).push(it); });
+
+  const out = Object.keys(byDay).map(day => {
+    const group = byDay[day].sort((a, b) => a.due - b.due);
+    const at = Math.min(...group.map(g => g.at));
+    if (group.length === 1) {
+      const { c, cycle, d, iso, dueLabel } = group[0];
+      const title = `💳 ${c.name}: due ${whenLabel(d)}`;
+      let lines;
+      if (cycle === 0) {
+        const apr = getEffectiveApr(c, 0);
+        const promo = isInPromoPeriod(c) && apr <= 0.005;
+        const interest = c.balance * (apr / 100 / 12);
+        const util = c.limit > 0 ? Math.round(c.balance / c.limit * 100) : null;
+        lines = [
+          `${fmt(c.min)} minimum due ${dueLabel}`,
+          `${fmt(c.balance)} balance` + (promo
+            ? ` · 0% promo until ${new Date(c.promoUntil + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+            : ` · about ${fmt(interest)}/mo interest`) + (util != null ? ` · ${util}% used` : ''),
+          setAside >= c.min - 0.005 ? `✅ Your ${fmt(setAside)} set aside covers it`
+            : setAside > 0.005 ? `⚠️ ${fmt(c.min - setAside)} short in set-aside cash`
+            : `💡 Nothing set aside for it yet`
+        ];
+        if ((c.cycleStreak || 0) > 0) lines.push(`🔥 ${c.cycleStreak} on time in a row`);
+      } else {
+        lines = [`Payment due ${dueLabel}. Open the app to see the minimum.`];
+      }
+      return { id: `${c.id}:${iso}:${d}`, at, title, body: fitLines(lines), url: './' };
+    }
+    const totalMin = group.reduce((s, g) => s + (g.cycle === 0 ? (g.c.min || 0) : 0), 0);
+    const lines = group.map(g => `${g.c.name}: ${g.cycle === 0 ? fmt(g.c.min) + ' ' : ''}due ${g.dueLabel} (${whenLabel(g.d)})`);
+    if (totalMin > 0.005) lines.push(setAside >= totalMin - 0.005 ? `✅ ${fmt(totalMin)} total, covered by your set-aside`
+      : setAside > 0.005 ? `⚠️ ${fmt(totalMin)} total, ${fmt(totalMin - setAside)} short in set-aside`
+      : `💡 ${fmt(totalMin)} total, nothing set aside yet`);
+    return {
+      id: `day:${day}:${shortHash(group.map(g => `${g.c.id}:${g.iso}:${g.d}`).join('|'))}`, at,
+      title: `💳 ${group.length} payments coming up`, body: fitLines(lines), url: './'
+    };
+  });
+  out.push(...buildStatementTips(), ...buildMonthlyRecap());
   return out.sort((a, b) => a.at - b.at).slice(0, 60);
+}
+
+// Pay-before-statement tip. Issuers report the statement balance to the credit bureaus, so paying a
+// high-use card down a few days before the statement closes lowers the use they see. Statement dates
+// aren't in the bank data, so the close is estimated as ~25 days before the due date (the usual gap).
+const STATEMENT_GAP_DAYS = 25;
+function estimateNextStatementClose(c) {
+  if (!c.dueDate) return null;
+  const close = new Date(c.dueDate + 'T18:00:00');
+  close.setDate(close.getDate() - STATEMENT_GAP_DAYS);
+  const now = new Date();
+  while (close.getTime() < now.getTime() + 3 * 86400000) close.setMonth(close.getMonth() + 1);  // need 3 days of notice
+  return close;
+}
+function buildStatementTips() {
+  const out = [];
+  cards.filter(c => c.limit > 0 && c.balance > 0.005).forEach(c => {
+    const util = c.balance / c.limit;
+    if (util < 0.30) return;                                     // only when it actually matters
+    const close = estimateNextStatementClose(c);
+    if (!close) return;
+    const at = new Date(close); at.setDate(at.getDate() - 3);    // 6 PM, three days before
+    const payTo30 = Math.max(0, c.balance - c.limit * 0.29);
+    const payTo10 = Math.max(0, c.balance - c.limit * 0.09);
+    const closeLabel = close.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    out.push({
+      id: `stmt:${c.id}:${close.toLocaleDateString('en-CA')}`, at: at.getTime(),
+      title: `\uD83D\uDCCA ${c.name}: statement closes in about 3 days`,
+      body: fitLines([
+        `${fmt(c.balance)} is ${Math.round(util * 100)}% of your ${fmt(c.limit)} limit.`,
+        `Paying ${fmt(payTo30)} before about ${closeLabel} reports under 30%, which can help your credit score.`,
+        util >= 0.10 && payTo10 > payTo30 + 0.005 ? `\u2B50 ${fmt(payTo10)} gets it under 10%.` : ''
+      ].filter(Boolean)),
+      url: './'
+    });
+  });
+  return out;
+}
+
+// Monthly recap on the 1st at 10 AM, built from your latest numbers each time the app syncs.
+function getPaidOffPct() {
+  const owed = totalOwed();
+  let peak = owed;
+  try { const t = buildTrendData().totalSeries; if (t.length) peak = Math.max(owed, ...t); } catch (e) {}
+  return peak > 0.01 ? Math.round((peak - owed) / peak * 100) : 100;
+}
+function buildMonthlyRecap() {
+  if (!cards.length) return [];
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const sendAt = new Date(now.getFullYear(), now.getMonth() + 1, 1, 10, 0, 0);
+  const monthName = monthStart.toLocaleDateString('en-US', { month: 'long' });
+  const owed = totalOwed();
+  const change = owed - owedAt(monthStart);
+  const unlocked = achievements.filter(a => a.date && new Date(a.date) >= monthStart).length;
+  const asOf = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const lines = [
+    Math.abs(change) < 0.005 ? `No change in what you owe.` : change < 0 ? `\u2B07\uFE0F Paid down ${fmt(-change)} this month.` : `\u2B06\uFE0F What you owe went up ${fmt(change)}.`,
+    `You owe ${fmt(owed)} \u00B7 ${getPaidOffPct()}% paid off.`,
+    unlocked ? `\uD83C\uDFC6 ${unlocked} achievement${unlocked === 1 ? '' : 's'} unlocked.` : '',
+    `(Numbers as of ${asOf}, when the app last synced.)`
+  ].filter(Boolean);
+  return [{ id: `recap:${monthStart.toLocaleDateString('en-CA').slice(0, 7)}`, at: sendAt.getTime(), title: `\uD83D\uDCC5 Your ${monthName} recap`, body: fitLines(lines), url: './' }];
+}
+
+// Show the next real reminder right now, exactly as it will look.
+async function previewNextReminder() {
+  const list = buildReminderSchedule();
+  let r = list[0];
+  if (!r) {
+    const c = cards.filter(x => x.balance > 0.005 && (x.min || 0) > 0.005 && x.dueDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+    r = c ? { title: `💳 ${c.name}: payment coming up`, body: `${fmt(c.min)} minimum due ${new Date(c.dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` }
+          : { title: '💳 Nothing due right now', body: 'Every card is paid or has no minimum due.' };
+  }
+  const reg = await navigator.serviceWorker.ready;
+  await reg.showNotification(r.title, { body: r.body, tag: 'preview' });
+  return r;
 }
 
 async function pushPost(path, body) {
@@ -7353,7 +7495,7 @@ async function syncReminders(force) {
   try {
     const cur = await currentPushSub();
     if (!cur || !cur.sub) return;
-    const reminders = buildReminderSchedule(cfg.days || [3]);
+    const reminders = buildReminderSchedule();
     const hash = JSON.stringify(reminders.map(r => [r.id, r.at, r.body]));
     if (!force && hash === cfg.lastHash && Date.now() - (cfg.lastSync || 0) < 12 * 3600000) return;
     await pushPost('/subscribe', { subscription: cur.sub.toJSON(), reminders });
@@ -7368,7 +7510,7 @@ function scheduleReminderSync() { clearTimeout(remSyncTimer); remSyncTimer = set
 document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleReminderSync(); });
 setTimeout(() => syncReminders(false), 2500);
 
-async function turnOnReminders(days) {
+async function turnOnReminders() {
   if (!getPlaidAppSecret()) throw new Error('Enter your APP_SECRET under "Connect your bank" first. Reminders use the same secret.');
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
     throw new Error(isIOS() && !isStandalone() ? 'On iPhone, add the app to your Home Screen first, then open it from there and turn reminders on.' : "This browser can't receive push notifications.");
@@ -7379,9 +7521,9 @@ async function turnOnReminders(days) {
   const keyRes = await fetch(PUSH_WORKER_URL + '/vapid-public-key').then(r => r.json()).catch(() => ({}));
   if (!keyRes.key) throw new Error("Couldn't reach your cc-push Worker. Check that it's deployed with its VAPID keys.");
   const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u.dec(keyRes.key) });
-  const reminders = buildReminderSchedule(days);
+  const reminders = buildReminderSchedule();
   await pushPost('/subscribe', { subscription: sub.toJSON(), reminders });
-  setRemCfg({ on: true, days, lastHash: JSON.stringify(reminders.map(r => [r.id, r.at, r.body])), lastSync: Date.now(), count: reminders.length });
+  setRemCfg({ on: true, lastHash: JSON.stringify(reminders.map(r => [r.id, r.at, r.body])), lastSync: Date.now(), count: reminders.length });
 }
 
 async function renderReminderSettings(msg) {
@@ -7389,40 +7531,35 @@ async function renderReminderSettings(msg) {
   if (!box) return;
   if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { box.innerHTML = '<p class="sa-empty" style="padding:0">Not available in demo mode.</p>'; return; }
   const cfg = getRemCfg();
-  const daysVal = cfg && cfg.days ? cfg.days.join(',') : '3';
-  const opt = (v, label) => `<option value="${v}"${daysVal === v ? ' selected' : ''}>${label}</option>`;
-  const daySelect = `<label class="lock-after">Remind me <select id="rem-days">${opt('3', '3 days before')}${opt('1', 'The day before')}${opt('3,1', '3 days and 1 day before')}</select></label>`;
+  const when = '14, 7, 5 and 3 days before each due date (9 AM), a pay-before-statement tip when a card is over 30% used (6 PM), and a monthly recap on the 1st';
+  const boxEl = document.getElementById('reminders-box');
+  // Once it's on there's nothing to press, so it tucks itself near the bottom of More.
+  const anchor = document.getElementById(cfg && cfg.on ? 'data-box' : 'plaid-box');
+  if (boxEl && anchor && boxEl.nextElementSibling !== anchor) anchor.parentNode.insertBefore(boxEl, anchor);
+  if (boxEl) boxEl.classList.toggle('rem-compact', !!(cfg && cfg.on));
   if (!cfg || !cfg.on) {
-    box.innerHTML = `<div class="lock-row">${daySelect}<button type="button" class="primary" id="rem-on-btn">Turn on reminders</button></div><p class="lock-msg" id="rem-msg">${msg || ''}</p>`;
+    box.innerHTML = `<p class="box-sub" style="margin:0 0 12px">You'll get notifications ${when}.</p><button type="button" class="primary" id="rem-on-btn">Turn on reminders</button><p class="lock-msg" id="rem-msg">${msg || ''}</p>`;
     document.getElementById('rem-on-btn').addEventListener('click', async (e) => {
       e.target.disabled = true;
-      try {
-        await turnOnReminders(document.getElementById('rem-days').value.split(',').map(Number));
-        renderReminderSettings();
-      } catch (err) { renderReminderSettings(err.message || String(err)); }
+      try { await turnOnReminders(); renderReminderSettings(); }
+      catch (err) { renderReminderSettings(err.message || String(err)); }
     });
     return;
   }
   box.innerHTML = `
-    <div class="lock-row">
+    <div class="rem-line">
       <span class="lock-on"><i></i>On for this device</span>
-      ${daySelect}
-      <button type="button" id="rem-test-btn">Send a test</button>
-      <button type="button" class="reset-link danger-link" id="rem-off-btn">Turn off</button>
+      <span class="rem-when">${when}${cfg.count != null ? ` · ${cfg.count} scheduled` : ''}</span>
+      <span class="rem-actions">
+        <button type="button" class="reset-link" id="rem-test-btn">Preview a reminder</button>
+        <button type="button" class="reset-link danger-link" id="rem-off-btn">Turn off</button>
+      </span>
     </div>
-    <p class="box-sub" style="margin:10px 0 0">${cfg.count != null ? `${cfg.count} reminder${cfg.count === 1 ? '' : 's'} scheduled over the next couple of months. ` : ''}They update on their own when your due dates change.</p>
     <p class="lock-msg" id="rem-msg">${msg || ''}</p>`;
-  document.getElementById('rem-days').addEventListener('change', async (e) => {
-    const c = getRemCfg(); if (!c) return;
-    c.days = e.target.value.split(',').map(Number); setRemCfg(c);
-    await syncReminders(true); renderReminderSettings();
-  });
   document.getElementById('rem-test-btn').addEventListener('click', async () => {
     try {
-      const cur = await currentPushSub();
-      const r = await pushPost('/test', { subscription: cur.sub.toJSON() });
-      renderReminderSettings(r.ok ? '' : `The push service answered ${r.status}. Try turning reminders off and on again.`);
-      if (r.ok) { const m = document.getElementById('rem-msg'); if (m) { m.style.color = 'var(--success)'; m.textContent = 'Test sent. It should show up in a few seconds.'; } }
+      await previewNextReminder();
+      const m = document.getElementById('rem-msg'); if (m) { m.style.color = 'var(--success)'; m.textContent = 'Preview sent. That’s what your next reminder will look like.'; }
     } catch (err) { renderReminderSettings(err.message || String(err)); }
   });
   document.getElementById('rem-off-btn').addEventListener('click', async () => {
@@ -7485,6 +7622,187 @@ async function submitUnlockCode() {
 document.getElementById('lock-code-btn').addEventListener('click', submitUnlockCode);
 document.getElementById('lock-code-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitUnlockCode(); });
 document.getElementById('lock-code-input').addEventListener('input', (e) => { if (e.target.value.replace(/\D/g, '').length === 6) submitUnlockCode(); });
+
+// ================= Entrance: blocks rise in one after another, numbers fade and count up =================
+const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(el, ms = 450) {
+  // If a count is already running, keep its real final value instead of the half-counted text.
+  if (el._counting && el.textContent !== el._countLast) el._counting = false;   // re-rendered since: use the new text
+  const text = el._counting ? el._countFinal : el.textContent.trim();
+  el._counting = false;
+  const m = /^([^\d-]*)(-?)([\d,]+(?:\.(\d+))?)(.*)$/.exec(text);
+  if (!m) return;
+  const target = parseFloat(m[3].replace(/,/g, ''));
+  if (!isFinite(target) || target === 0) return;
+  const decimals = m[4] ? m[4].length : 0;
+  const fmtN = v => m[1] + m[2] + v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + m[5];
+  const start = performance.now();
+  const run = (el._countRun || 0) + 1;
+  el._countRun = run; el._counting = true; el._countFinal = text;
+  let last = fmtN(0);
+  el.textContent = last; el._countLast = last;
+  const step = (now) => {
+    if (el._countRun !== run) return;                // a newer count took over
+    if (el.textContent !== last) { el._counting = false; return; }   // re-rendered with a real value: keep it
+    const t = Math.min(1, (now - start) / ms);
+    const eased = 1 - Math.pow(1 - t, 3);
+    last = t < 1 ? fmtN(target * eased) : text;
+    el.textContent = last; el._countLast = last;
+    if (t < 1) requestAnimationFrame(step); else el._counting = false;
+  };
+  requestAnimationFrame(step);
+}
+function animateIn() {
+  if (reduceMotion()) return;
+  document.querySelectorAll('.tab-panel:not(.active) .anim-block, .tab-panel:not(.active) .anim-num').forEach(el => el.classList.remove('anim-block', 'anim-num'));
+  const panel = document.querySelector('.tab-panel.active');
+  if (!panel) return;
+  const sel = [
+    '.hero-card', '#reminder-banner > *', '#celebration-banner > *', '#upcoming-banner > *', '#promo-warning-banner > *',
+    '[data-tab-panel].active > .tiles > *', '[data-tab-panel].active .dash-grid > .block', '[data-tab-panel].active .insights > *',
+    '[data-tab-panel].active > .form-box', '[data-tab-panel].active > .block', '[data-tab-panel].active .plan-grid > *',
+    '[data-tab-panel].active .more-grid > *', '[data-tab-panel].active .cards-grid > .card-col',
+    '[data-tab-panel].active > .rewards-tiles > *', '[data-tab-panel].active > .chart-box', '[data-tab-panel].active > details'
+  ].join(',');
+  const vh = window.innerHeight;
+  const blocks = Array.from(document.querySelectorAll(sel)).filter(el => {
+    if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') return false;
+    const r = el.getBoundingClientRect();
+    return r.height > 0 && r.top < vh + 80 && r.bottom > -40;
+  }).sort((a, b) => { const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return (ra.top - rb.top) || (ra.left - rb.left); });
+  blocks.forEach((el, i) => {
+    const d = Math.min(i, 8) * 35;
+    el.classList.remove('anim-block'); void el.offsetWidth;
+    el.style.setProperty('--d', d + 'ms');
+    el.classList.add('anim-block');
+    const done = (e) => { if (e.target === el) { el.classList.remove('anim-block'); el.removeEventListener('animationend', done); el.removeEventListener('animationcancel', done); } };
+    el.addEventListener('animationend', done); el.addEventListener('animationcancel', done);
+    el.querySelectorAll('#total-owed, #progress-pct, .t-value, .i-big, .sa-total, .whatif-amt, .wi-big, .s-value, .bal, .u-min, .pr-net, .split-center span, .delta-pill, .txn-amt, .sa-amt').forEach(n => {
+      n.classList.remove('anim-num'); void n.offsetWidth;
+      n.style.setProperty('--nd', (d + 70) + 'ms');
+      n.classList.add('anim-num');
+      const done2 = () => { n.classList.remove('anim-num'); n.removeEventListener('animationend', done2); n.removeEventListener('animationcancel', done2); };
+      n.addEventListener('animationend', done2); n.addEventListener('animationcancel', done2);
+    });
+  });
+  // the headline numbers count up
+  setTimeout(() => {
+    document.querySelectorAll('#total-owed, #progress-pct, [data-tab-panel].active .t-value, [data-tab-panel].active .sa-total, [data-tab-panel].active .i-big')
+      .forEach(el => { if (el.getBoundingClientRect().top < vh) countUp(el); });
+  }, 40);
+  // charts draw themselves in again
+  if (panel.dataset.tabPanel === 'overview') {
+    [typeof chart !== 'undefined' ? chart : null, typeof barChart !== 'undefined' ? barChart : null].forEach(c => {
+      if (c && typeof c.reset === 'function') {
+        try {
+          const prev = c.options.animation;
+          c.options.animation = Object.assign({}, prev, { duration: 500, easing: 'easeOutCubic' });
+          c.reset(); c.update();
+          setTimeout(() => { c.options.animation = prev; }, 600);
+        } catch (e) {}
+      }
+    });
+  }
+}
+// First open (or right after unlocking)
+window.addEventListener('load', () => setTimeout(() => { if (!document.documentElement.classList.contains('app-locked')) animateIn(); }, 60));
+{
+  const baseUnlocked = unlockedNow;
+  unlockedNow = function () { baseUnlocked.apply(this, arguments); requestAnimationFrame(() => animateIn()); };
+}
+
+// ================= Duplicate bank entries =================
+// Two kinds of doubles inflate the history (balances themselves come straight from the bank and are fine):
+//  1) the same bank change logged again by an overlapping sync (same card, type and amount within 5 days)
+//  2) a payment you logged in the app that the bank sync then recorded again when it posted (within 10 days)
+const BANK_NOTE = 'Auto-detected from bank sync';
+function findDuplicateBankEntries() {
+  const ids = new Set(cards.map(c => c.id));
+  const live = history.filter(h => !h.deleted && ids.has(h.cardId));
+  const T = h => new Date(h.date).getTime();
+  const same = (a, b) => a.cardId === b.cardId && a.type === b.type && Math.abs(a.amount - b.amount) < 0.005;
+  const out = [];
+  live.forEach(h => {
+    if (h.note !== BANK_NOTE || h.keepDuplicate) return;
+    const t = T(h);
+    const twin = live.find(x => x !== h && x.note === BANK_NOTE && same(x, h) && (T(x) < t || (T(x) === t && String(x.id) < String(h.id))) && t - T(x) < 5 * 86400000);
+    if (twin) { out.push({ h, of: twin, why: 'repeat' }); return; }
+    if (h.type === 'payment') {
+      const logged = live.find(x => x.note !== BANK_NOTE && same(x, h) && Math.abs(T(x) - t) < 10 * 86400000);
+      if (logged) out.push({ h, of: logged, why: 'logged' });
+    }
+  });
+  return out;
+}
+function fixDuplicateBankEntries(silent) {
+  const dups = findDuplicateBankEntries();
+  if (!dups.length) return 0;
+  const now = new Date().toISOString();
+  dups.forEach(d => { d.h.deleted = true; d.h.dedupedAt = now; d.h.dupOf = d.of.id; });
+  try { localStorage.setItem('cc-tracker-auto-dedupe', 'on'); } catch (e) {}
+  saveData(); render();
+  if (!silent) showReminder(`Removed ${dups.length} duplicate bank entr${dups.length === 1 ? 'y' : 'ies'}`, 'Your chart, paid-off % and monthly change now match what really happened. You can undo this in More, Your data.');
+  renderDedupeStatus();
+  return dups.length;
+}
+function undoDuplicateCleanup() {
+  const removed = history.filter(h => h.dedupedAt && !h.dedupeUndone);
+  // Sync keeps anything deleted on any device deleted, so put back fresh copies instead of un-deleting.
+  removed.forEach(h => {
+    const copy = { ...h, id: Date.now() + Math.random(), deleted: false };
+    delete copy.dedupedAt; delete copy.dupOf; delete copy.dedupeUndone;
+    copy.keepDuplicate = true;
+    history.push(copy);
+    h.dedupeUndone = true;
+  });
+  try { localStorage.setItem('cc-tracker-auto-dedupe', 'off'); } catch (e) {}
+  saveData(); render(); renderDedupeStatus();
+  showReminder('Duplicate cleanup undone', 'Those entries are back. The app won’t remove duplicates on its own until you fix them again.');
+}
+function renderDedupeStatus() {
+  const el = document.getElementById('dedupe-status');
+  if (!el) return;
+  const removed = history.filter(h => h.dedupedAt && !h.dedupeUndone).length;
+  if (!removed) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `Removed ${removed} duplicate bank entr${removed === 1 ? 'y' : 'ies'} so your history matches your bank. <button type="button" class="reset-link" id="dedupe-undo-btn">Undo</button>`;
+  document.getElementById('dedupe-undo-btn').addEventListener('click', undoDuplicateCleanup);
+}
+function offerDuplicateFix() {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+  let auto = null; try { auto = localStorage.getItem('cc-tracker-auto-dedupe'); } catch (e) {}
+  // Entries you put back with Undo are never flagged again.
+  const dups = findDuplicateBankEntries().filter(d => !d.h.keepDuplicate);
+  if (!dups.length) return;
+  if (auto === 'on') { fixDuplicateBankEntries(true); return; }
+  if (auto === 'off') return;
+  try { if (sessionStorage.getItem('cc-tracker-dedupe-later')) return; } catch (e) {}
+  const bank = dups.filter(d => d.why === 'repeat').length, logged = dups.length - bank;
+  const banner = document.getElementById('reminder-banner');
+  banner.innerHTML = `
+    <div class="reminder-box dedupe-box">
+      <div>
+        <p class="r-text">Found ${dups.length} duplicate bank entr${dups.length === 1 ? 'y' : 'ies'}</p>
+        <p class="r-sub">${bank ? `${bank} bank update${bank === 1 ? ' was' : 's were'} recorded twice` : ''}${bank && logged ? ', and ' : ''}${logged ? `${logged} payment${logged === 1 ? ' was' : 's were'} counted both when you logged ${logged === 1 ? 'it' : 'them'} and when the bank posted ${logged === 1 ? 'it' : 'them'}` : ''}. That makes your history look bigger than it was. Your balances are fine.</p>
+      </div>
+      <div class="dedupe-actions">
+        <button type="button" class="primary" id="dedupe-fix-btn">Fix them</button>
+        <button type="button" class="reminder-dismiss" id="dedupe-later-btn">Not now</button>
+      </div>
+    </div>`;
+  document.getElementById('dedupe-fix-btn').addEventListener('click', () => { banner.innerHTML = ''; fixDuplicateBankEntries(false); });
+  document.getElementById('dedupe-later-btn').addEventListener('click', () => { banner.innerHTML = ''; try { sessionStorage.setItem('cc-tracker-dedupe-later', '1'); } catch (e) {} });
+}
+{
+  const baseRender = render;
+  let offerTimer = null;
+  render = function () {
+    const r = baseRender.apply(this, arguments);
+    clearTimeout(offerTimer);
+    offerTimer = setTimeout(() => { offerDuplicateFix(); renderDedupeStatus(); }, 800);
+    return r;
+  };
+}
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
