@@ -153,6 +153,11 @@
     color-scheme: dark;
   }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+  /* iPhone gives date boxes a fixed built-in width; let them fit their container */
+  input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; min-height: 44px; }
+  input[type=date]::-webkit-date-and-time-value { text-align: left; }
+  .target-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .target-row select { width: 100%; min-width: 0; min-height: 44px; }
   .color-picker-input {
     width: 44px; height: 38px; padding: 3px; border-radius: 8px; cursor: pointer;
     background: #000000; border: 1px solid var(--border); color-scheme: dark;
@@ -229,6 +234,9 @@
   .cost-row .cr-name { font-weight: 600; color: var(--text-primary); }
   .cost-row .cr-sub { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
   .cost-row .cr-amt { font-weight: 700; font-size: 17px; color: var(--danger); font-variant-numeric: tabular-nums; }
+  #target-result .cost-row { flex-direction: row !important; align-items: center !important; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+  #target-result .cost-row > div:first-child { min-width: 0; }
+  #target-result .cost-row .cr-amt { white-space: nowrap; font-size: 16px; }
   .cost-total { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 16px; color: var(--text-secondary); display: flex; justify-content: space-between; font-weight: 500; }
   .cost-total span:last-child { color: var(--danger); font-weight: 700; font-variant-numeric: tabular-nums; }
   .planner-warn { font-size: 16px; color: var(--danger); margin-top: 10px; }
@@ -1382,10 +1390,11 @@
 
     <div class="form-box" id="target-box">
       <p>Hit a target date</p>
-      <p class="box-sub">Pick when you want to be debt-free to see what to pay each month.</p>
-      <div class="tool-row">
-        <input id="target-date" type="date" aria-label="Target debt-free date" />
-        <button class="primary" id="target-btn">Calculate</button>
+      <p class="box-sub">Pick the month you want to be debt-free by to see what to pay each month.</p>
+      <div class="target-row">
+        <select id="target-date" aria-label="Debt-free by">
+          <option value="">Choose a month</option>
+        </select>
         <button id="target-reset-btn">Clear</button>
       </div>
       <div id="target-result"></div>
@@ -1949,13 +1958,15 @@ function renderDeltaPill() {
   const before = owedAt(since);
   const net = Math.round((totalOwed() - before) * 100) / 100;
   const flat = Math.abs(net) < 0.005;
-  const period = range === 'month' ? 'this month' : 'this week';
+  const period = range === 'month' ? 'this month' : 'in 7 days';
   netEl.className = 'delta-pill ' + (flat ? 'flat' : net < 0 ? 'good' : 'bad');
   netEl.innerHTML = (flat ? '' : `<span aria-hidden="true">${net < 0 ? '\u2193' : '\u2191'}</span> `)
     + (flat ? 'No change ' + period : fmt(Math.abs(net)) + (net < 0 ? ' down ' : ' up ') + period);
-  const sinceLabel = since.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  if (wasEl) wasEl.textContent = `You owed ${fmt(before)} on ${sinceLabel}`;
-  netEl.title = `Compared with what you owed at the start of ${sinceLabel}`;
+  const whenLabel = range === 'month'
+    ? 'on ' + since.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    : 'a week ago';
+  if (wasEl) wasEl.textContent = `Was ${fmt(before)} ${whenLabel}`;
+  netEl.title = `Compared with what you owed ${whenLabel}`;
   document.querySelectorAll('#delta-range [data-delta]').forEach(b => b.classList.toggle('active', b.dataset.delta === range));
 }
 
@@ -4404,6 +4415,19 @@ document.getElementById('planner-use-setaside-btn').addEventListener('click', ()
   document.getElementById('planner-btn').click();
 });
 
+// A card's minimum payment the way banks usually set it: that month's interest
+// plus 1% of the balance, but never less than the minimum you entered (or $25
+// when none is entered). Paying a fixed $0 or a too-small minimum would let the
+// balance grow forever, which is how this once showed millions in interest.
+const DEFAULT_MIN_PAYMENT = 25;
+function minimumPaymentFor(c, balanceBeforeInterest, interest) {
+  const floor = (c.min || 0) > 0 ? c.min : DEFAULT_MIN_PAYMENT;
+  return Math.max(floor, interest + balanceBeforeInterest * 0.01);
+}
+function cardsMissingMinimum() {
+  return cards.filter(c => c.balance > 0.005 && !((c.min || 0) > 0));
+}
+
 function simulateMinimumOnly() {
   const balances = {};
   cards.forEach(c => { balances[c.id] = c.balance; });
@@ -4412,20 +4436,24 @@ function simulateMinimumOnly() {
   while (Object.values(balances).some(b => b > 0.01) && months < 600) {
     months++;
     cards.forEach(c => {
-      if (balances[c.id] > 0) {
-        const interest = balances[c.id] * (getEffectiveApr(c, months) / 100 / 12);
-        balances[c.id] += interest;
+      const start = balances[c.id];
+      if (start > 0.01) {
+        const interest = start * (getEffectiveApr(c, months) / 100 / 12);
         totalInterest += interest;
-      }
-    });
-    cards.forEach(c => {
-      if (balances[c.id] > 0) {
-        const pay = Math.min(c.min || 0, balances[c.id]);
-        balances[c.id] -= pay;
+        const pay = Math.min(start + interest, minimumPaymentFor(c, start, interest));
+        balances[c.id] = start + interest - pay;
       }
     });
   }
-  return { months, totalInterest };
+  return { months, totalInterest, capped: months >= 600 };
+}
+
+// "7 months", "1 year", "2 years, 3 months"
+function fmtDuration(n) {
+  n = Math.max(0, Math.round(n));
+  if (n < 12) return n + ' month' + (n === 1 ? '' : 's');
+  const y = Math.floor(n / 12), m = n % 12;
+  return y + ' year' + (y === 1 ? '' : 's') + (m ? ', ' + m + ' month' + (m === 1 ? '' : 's') : '');
 }
 
 function simulateAvalanche(monthlyBudget, strategy) {
@@ -4547,7 +4575,7 @@ function renderTarget(targetDateStr) {
 
   const target = new Date(targetDateStr + 'T00:00:00');
   const now = new Date();
-  const targetMonths = Math.max(1, Math.round((target - now) / (1000 * 60 * 60 * 24 * 30.44)));
+  const targetMonths = Math.max(1, (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth()));
 
   if (target <= now) {
     resultBox.innerHTML = '<p class="planner-warn">Pick a date in the future.</p>';
@@ -4557,7 +4585,7 @@ function renderTarget(targetDateStr) {
   const strategy = document.getElementById('strategy-select').value;
   const strategyLabel = getStrategyLabel(strategy);
   const result = computeRequiredMonthlyPayment(targetMonths, strategy);
-  const targetLabel = target.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const targetLabel = target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const detailed = simulateUpToMonth(result.amount, targetMonths, strategy);
   const allocation = calculateAllocation(result.amount, strategy);
   const allocationByCard = {};
@@ -4573,10 +4601,10 @@ function renderTarget(targetDateStr) {
     if (paidOff) {
       const payoffDate = new Date(now);
       payoffDate.setMonth(payoffDate.getMonth() + payoffMonthNum);
-      statusText = `Paid off by ${payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+      statusText = `Paid off ${payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
       statusColor = 'var(--success)';
     } else {
-      statusText = `Still owes ${fmt(remainingBalance)} — interest outpaces this payment for this card`;
+      statusText = `Still ${fmt(remainingBalance)} left by then`;
       statusColor = 'var(--danger)';
     }
     const monthlyAmt = allocationByCard[c.id] || 0;
@@ -4603,7 +4631,7 @@ function renderTarget(targetDateStr) {
           <p class="s-value">${fmt(result.amount)}</p>
         </div>
       </div>
-      <p class="pnote" style="margin-top:12px">Good news — paying just your minimums (${fmt(result.amount)}/month total) already gets you debt-free before ${targetLabel}.</p>
+      <p class="pnote" style="margin-top:12px">Good news — paying just your minimums (${fmt(result.amount)}/month total) already gets you debt-free by the end of ${targetLabel}.</p>
       <p class="hist-label" style="margin-top:16px">Per-card breakdown</p>
       ${breakdownHtml}
     `;
@@ -4617,21 +4645,36 @@ function renderTarget(targetDateStr) {
         <p class="s-label">Required monthly payment</p>
         <p class="s-value">${fmt(result.amount)}</p>
       </div>
-      <div class="savings-stat">
-        <p class="s-label">Target date</p>
-        <p class="s-value" style="font-size:17px">${targetLabel}</p>
-      </div>
     </div>
-    <p class="pnote" style="margin-top:12px">Pay about ${fmt(result.amount)}/month, following the ${strategyLabel} order, to be debt-free by ${targetLabel} (~${targetMonths} month${targetMonths === 1 ? '' : 's'} from now).</p>
+    <p class="pnote" style="margin-top:12px">Pay about ${fmt(result.amount)}/month, following the ${strategyLabel} order, to be debt-free by the end of ${targetLabel} (${fmtDuration(targetMonths)} from now).</p>
     ${anyUnpaid ? '<p class="planner-warn" style="margin-top:10px">Heads up — at least one card is still projected to carry a balance by this date, since its interest is accruing faster than the minimum keeping it in check. See the breakdown below.</p>' : ''}
     <p class="hist-label" style="margin-top:16px">Per-card breakdown</p>
     ${breakdownHtml}
   `;
 }
 
-document.getElementById('target-btn').addEventListener('click', () => {
-  const val = document.getElementById('target-date').value;
-  if (!val) return;
+// Month choices for "Hit a target date": next month out to five years.
+// Each value is the last day of that month, so "by June 2027" means by June 30.
+function fillTargetMonths() {
+  const sel = document.getElementById('target-date');
+  if (!sel) return;
+  const keep = sel.value;
+  const now = new Date();
+  let html = '<option value="">Choose a month</option>';
+  for (let i = 1; i <= 60; i++) {
+    const end = new Date(now.getFullYear(), now.getMonth() + i + 1, 0);
+    const val = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+    const label = end.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    html += `<option value="${val}">${label} (${fmtDuration(i)})</option>`;
+  }
+  sel.innerHTML = html;
+  if (keep && sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+}
+fillTargetMonths();
+
+document.getElementById('target-date').addEventListener('change', (e) => {
+  const val = e.target.value;
+  if (!val) { document.getElementById('target-result').innerHTML = ''; return; }
   renderTarget(val);
 });
 
@@ -4676,10 +4719,10 @@ function renderSavings(monthlyBudget) {
       </div>
       <div class="savings-stat savings-highlight">
         <p class="s-label">Debt-free sooner by</p>
-        <p class="s-value">${monthsSaved} month${monthsSaved === 1 ? '' : 's'}</p>
+        <p class="s-value">${fmtDuration(monthsSaved)}</p>
       </div>
     </div>
-    <p class="pnote" style="margin-top:12px">Debt-free in about ${smart.months} month${smart.months === 1 ? '' : 's'} at ${fmt(monthlyBudget)}/month, following the ${strategyLabel} order, versus ${minOnly.months} months paying minimums only.</p>
+    <p class="pnote" style="margin-top:12px">Debt-free in about ${fmtDuration(smart.months)} at ${fmt(monthlyBudget)}/month, following the ${strategyLabel} order, versus about ${fmtDuration(minOnly.months)} paying minimums only.</p>
   `;
 }
 
@@ -4719,7 +4762,11 @@ function renderWhatIf() {
   target.setMonth(target.getMonth() + sim.months);
   const saved = Math.max(0, minOnly.totalInterest - sim.totalInterest);
   const sooner = Math.max(0, minOnly.months - sim.months);
-  const mo = n => n + ' month' + (n === 1 ? '' : 's');
+  const mo = fmtDuration;
+  const noMin = cardsMissingMinimum();
+  const noMinNote = noMin.length
+    ? ` ${noMin.length === 1 ? esc(noMin[0].name) + ' has' : noMin.length + ' cards have'} no minimum entered, so ${noMin.length === 1 ? 'it counts' : 'they count'} as ${fmt(DEFAULT_MIN_PAYMENT)} a month here.`
+    : '';
   resultBox.innerHTML = `
     <div class="wi-hero">
       <p class="wi-big">Debt-free by ${target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
@@ -4730,7 +4777,7 @@ function renderWhatIf() {
       <div class="wi-stat good"><p class="s-label">Saved vs. minimums only</p><p class="s-value">${fmt(saved)}</p></div>
       <div class="wi-stat good"><p class="s-label">Done sooner by</p><p class="s-value">${mo(sooner)}</p></div>
     </div>
-    <p class="wi-note">Paying only the minimums would take ${mo(minOnly.months)} and cost ${fmt(minOnly.totalInterest)} in interest.</p>
+    <p class="wi-note">Paying only the minimums would take ${minOnly.capped ? 'more than 50 years' : 'about ' + mo(minOnly.months)} and cost ${fmt(minOnly.totalInterest)} in interest.${noMinNote}</p>
   `;
 }
 
