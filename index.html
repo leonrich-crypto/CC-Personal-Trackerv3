@@ -673,26 +673,456 @@
     .tile .t-sub { grid-column: 1; grid-row: 2; margin: 2px 0 0; white-space: normal; }
     .tile .t-value { grid-column: 2; grid-row: 1 / span 2; font-size: 22px; }
   }
+  /* Card editors must fit inside the card. overflow: clip stops the browser
+     from scrolling the card sideways when an input gets focus. */
+  .card-col { overflow: clip; }
+  .card-col input, .card-col select, .card-col button { min-width: 0; max-width: 100%; }
+  .card-col .name-row input[type=text] { width: 100%; font-size: 16px !important; padding: 6px 8px; }
+  .card-col .name-row > span { flex-wrap: nowrap; }
+  .card-col .apr-row > span input { width: 90px !important; }
+  .category-edit-box { width: 100%; max-height: 260px; overflow-y: auto; }
+  .card-col [data-editing="true"] { cursor: default; }
+  .delta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .delta-row .delta-pill { margin: 0; }
+  .range-switch.mini { margin: 0; padding: 3px; gap: 2px; background: var(--surface-2); }
+  .range-switch.mini button.active { background: var(--surface); }
+  .range-switch.mini button { padding: 3px 9px; font-size: 13px; min-height: 0; }
+  .delta-was { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  /* Set-aside: pick the bank first, a calm meter, only rows that hold money */
+  .sa-meter { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 18px; }
+  .sa-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .sa-meter .sa-label { font-size: 15px !important; color: var(--text-secondary) !important; font-weight: 500 !important; margin: 0 0 2px !important; font-family: inherit !important; letter-spacing: 0 !important; text-transform: none !important; }
+  .sa-total { font-family: var(--display); font-size: 30px !important; font-weight: 700 !important; color: var(--text-primary) !important; margin: 0 !important; letter-spacing: -0.6px !important; font-variant-numeric: tabular-nums; }
+  .sa-status { margin: 0 0 4px !important; font-size: 15px !important; font-weight: 600 !important; color: var(--success) !important; }
+  .sa-meter.short .sa-status { color: var(--warning) !important; }
+  .sa-track { height: 8px; border-radius: 999px; background: var(--surface); margin: 12px 0 10px; overflow: hidden; }
+  .sa-fill { height: 100%; border-radius: 999px; background: var(--success); }
+  .sa-meter.short .sa-fill { background: var(--warning); }
+  .sa-sub { margin: 0 !important; font-size: 14px !important; color: var(--text-muted) !important; font-weight: 400 !important; }
+  .sa-form { margin-bottom: 18px; }
+  .form-box p.sa-step, .sa-step { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin: 0 0 8px; font-family: inherit; letter-spacing: 0; text-transform: none; }
+  .bank-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .bank-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .bank-chip span { color: var(--text-muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .bank-chip.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .bank-chip.active span { color: color-mix(in srgb, var(--bg) 70%, transparent); }
+  #reserve-bank { width: 100%; margin-bottom: 8px; }
+  .sa-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
+  .sa-row .money-input-wrap, .sa-row select, .sa-row input { width: 100%; min-width: 0; margin: 0; }
+  .sa-btns { display: flex; gap: 8px; }
+  .sa-btns button { white-space: nowrap; }
+  .sa-split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .sa-list { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .sa-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 14px; font-size: 16px; }
+  .sa-item + .sa-item { border-top: 1px solid var(--border); }
+  .sa-name { display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sa-name i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .sa-amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sa-empty { margin: 0 !important; padding: 11px 14px; font-size: 15px !important; color: var(--text-muted) !important; font-weight: 400 !important; }
+  @media (max-width: 760px) {
+    .sa-row { grid-template-columns: 1fr 1fr; }
+    .sa-row #reserve-note { grid-column: 1 / -1; }
+    .sa-btns { grid-column: 1 / -1; }
+    .sa-btns button { flex: 1; }
+    .sa-split { grid-template-columns: 1fr; gap: 14px; }
+  }
+  #reserve-view-mode { flex: 0 0 auto; width: auto !important; }
+  .sa-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 8px; margin-right: 6px; vertical-align: 1px; }
+  .sa-tag i { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ================= Planner / Rewards / More: shared app-style pieces ================= */
+  [hidden] { display: none !important; }
+  .form-box p.box-sub, .box-sub { font-size: 15px; color: var(--text-muted); font-weight: 400; margin: -8px 0 14px; line-height: 1.45; }
+  input[type=password], input[type=url], input[type=email] { padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 17px; background: var(--surface-2); color: var(--text-primary); font-family: 'Inter', sans-serif; }
+  textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); color: var(--text-primary); font-family: ui-monospace, Menlo, monospace; font-size: 15px; box-sizing: border-box; }
+
+  /* Strategy picker */
+  .strategy-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .strategy-pick button { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); color: var(--text-secondary); cursor: pointer; font-family: inherit; min-height: 0; }
+  .strategy-pick button b { font-size: 16px; color: var(--text-primary); font-weight: 600; }
+  .strategy-pick button span { font-size: 14px; line-height: 1.4; }
+  .strategy-pick button.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+  .strategy-pick button.active b::after { content: ' \2713'; color: var(--success); }
+
+  /* Pay more, finish sooner */
+  .form-box p.whatif-amt { font-family: var(--display); font-size: 32px; font-weight: 700; letter-spacing: -0.6px; color: var(--text-primary); margin: 0 0 6px; font-variant-numeric: tabular-nums; }
+  #whatif-slider { width: 100%; }
+  .whatif-scale { display: flex; justify-content: space-between; font-size: 14px; color: var(--text-muted); margin: 4px 0 16px; }
+  .wi-hero { margin-bottom: 12px; }
+  .form-box p.wi-big { font-size: 20px; font-weight: 700; color: var(--success); margin: 0; }
+  .form-box p.wi-sub, .form-box p.wi-note { font-size: 14px; color: var(--text-muted); font-weight: 400; margin: 2px 0 0; }
+  .form-box p.wi-note { margin-top: 12px; }
+  .wi-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .wi-stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .wi-stat .s-label { font-size: 14px !important; color: var(--text-secondary) !important; font-weight: 500 !important; margin: 0 0 4px !important; }
+  .wi-stat .s-value { font-size: 20px !important; font-weight: 700 !important; color: var(--text-primary) !important; margin: 0 !important; font-variant-numeric: tabular-nums; }
+  .wi-stat.good .s-value { color: var(--success) !important; }
+
+  /* Planner tools side by side */
+  .plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-bottom: 24px; }
+  .plan-grid .form-box { margin-bottom: 0; }
+  .tool-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+  .tool-row .money-input-wrap, .tool-row input { width: 100%; min-width: 0; }
+  .form-box p.tool-link { margin: 8px 0 0; }
+  #planner-chart-box { display: none !important; }
+  #planner-result:not(:empty), #target-result:not(:empty) { margin-top: 14px; }
+
+  /* Activity rows (payments, set-aside, rewards) */
+  .txn-list { display: flex; flex-direction: column; }
+  .txn-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border); }
+  .txn-list > .txn-row:first-child, .hist-group-header + .txn-row { border-top: 0; }
+  .txn-icon { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 16px; background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); }
+  .txn-icon.in, .txn-icon.down { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border-color: transparent; }
+  .txn-title { font-size: 16px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .txn-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+  .txn-meta .sa-tag { margin: 0; font-size: 13px; padding: 1px 9px 1px 7px; }
+  .txn-amt { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+  .txn-amt.good { color: var(--success); }
+  .txn-row .hist-delete-btn { opacity: 0.45; }
+  .txn-row:hover .hist-delete-btn, .txn-row .hist-delete-btn:focus-visible, .txn-row .hist-delete-btn[data-confirming="true"] { opacity: 1; }
+  @media (hover: none) { .txn-row .hist-delete-btn { opacity: 0.8; } }
+  .txn-list .hist-group { margin-top: 10px; }
+  .txn-list .hist-group:first-child { margin-top: 0; }
+  .txn-list .hist-group-header { padding: 8px 0 4px; border-bottom: 1px solid var(--border); }
+  .txn-list .hist-group-header .hg-label { color: var(--text-secondary); font-size: 14px; }
+  .txn-list .hist-group-header .hg-sub { color: var(--text-muted); font-size: 14px; }
+  .sa-activity-head { margin-top: 4px; }
+
+  /* Rewards */
+  .tiles.rewards-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rw-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr) auto; gap: 8px; align-items: center; margin-bottom: 18px; }
+  .rw-form select, .rw-form input { width: 100%; min-width: 0; }
+  .rewards-charts-row { display: none !important; }
+  .form-box p.box-foot { text-align: left; margin: 10px 0 0; }
+  .ly-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 8px; align-items: center; margin-top: 10px; }
+  .ly-form input { width: 100%; min-width: 0; }
+  .sub-detail { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 12px; }
+  .sub-detail > summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text-secondary); list-style: none; display: flex; align-items: center; gap: 8px; }
+  .sub-detail > summary::-webkit-details-marker { display: none; }
+  .sub-detail > summary::before { content: '+'; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border); display: grid; place-items: center; font-size: 14px; color: var(--text-muted); }
+  .sub-detail[open] > summary::before { content: '\2212'; }
+  .sub-detail[open] > summary { margin-bottom: 12px; }
+  .sub-detail textarea { margin-bottom: 8px; }
+  .sub-detail .row { margin-bottom: 0; }
+
+  /* More */
+  .more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-bottom: 24px; }
+  .more-grid .form-box { margin-bottom: 0; }
+  .ac-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ac-grid input, .ac-grid .money-input-wrap { width: 100%; min-width: 0; }
+  .chip-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-checks .cat-option { border: 1px solid var(--border); border-radius: 999px; padding: 7px 12px !important; background: var(--surface-2); font-size: 14px; line-height: 1.2; }
+  .chip-checks .cat-option input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+  .chip-checks .cat-option:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); color: var(--text-primary); }
+  .chip-checks .cat-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ac-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .ac-foot #add-card-btn { margin-left: auto; }
+  .data-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .data-actions button { font-size: 15px; }
+  .data-danger { display: flex; flex-wrap: wrap; gap: 8px 20px; border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+  .reset-link.danger-link { color: var(--danger); }
+  #activity-box .txn-list { max-height: 520px; overflow: auto; }
+
+  @media (max-width: 900px) {
+    .plan-grid, .more-grid { grid-template-columns: 1fr; }
+    .rw-form { grid-template-columns: 1fr 1fr; }
+    .rw-form #rewards-card-select, .rw-form #rewards-note { grid-column: 1 / -1; }
+    .rw-form #rewards-btn { grid-column: 1 / -1; }
+    .ly-form { grid-template-columns: 1fr 1fr; }
+    .ly-form #loyalty-name, .ly-form #loyalty-add-btn { grid-column: 1 / -1; }
+  }
+  @media (max-width: 640px) {
+    .strategy-pick { grid-template-columns: 1fr; }
+    .strategy-pick button { padding: 12px 14px; }
+    .wi-stats { grid-template-columns: 1fr; gap: 8px; }
+    .wi-stat { display: flex; justify-content: space-between; align-items: center; }
+    .wi-stat .s-label { margin: 0 !important; }
+    .wi-stat .s-value { font-size: 18px !important; }
+    .tool-row { grid-template-columns: 1fr 1fr; }
+    .tool-row > :first-child { grid-column: 1 / -1; }
+    .ac-grid { grid-template-columns: 1fr 1fr; }
+    .ac-grid .ac-name { grid-column: 1 / -1; }
+    .data-actions button { flex: 1 1 calc(50% - 8px); }
+    .txn-row { gap: 10px; }
+    .txn-icon { width: 30px; height: 30px; font-size: 14px; }
+  }
+  /* Planner result rows: let the text wrap instead of running into the amount */
+  .planner-row-main { min-width: 0; flex: 1; }
+  .planner-row-main > div:last-child, .planner-row-main > div { min-width: 0; }
+  .planner-row .pnote { overflow-wrap: anywhere; }
+  .planner-row-right { flex-shrink: 0; gap: 10px; }
+  .txn-list > .sa-empty { padding: 8px 0; }
+  #loyalty-list > p { font-size: 15px !important; font-weight: 400 !important; color: var(--text-muted) !important; }
+  #plaid-status, #plaid-last-sync, #sync-status-text { font-weight: 400 !important; }
+  .rewards-tiles .t-value { color: var(--text-primary); }
+  @media (max-width: 900px) { .rw-form #rewards-amount { grid-column: 1 / -1; } }
+  @media (max-width: 640px) { .ac-grid .money-input-wrap:last-child { grid-column: 1 / -1; } }
+  .data-danger .reset-link { text-align: left; }
+  /* Shorter activity lists */
+  .txn-row { padding: 8px 0; gap: 10px; }
+  .txn-icon { width: 28px; height: 28px; font-size: 14px; }
+  .txn-title { font-size: 15px; }
+  .txn-meta { font-size: 13px; margin-top: 1px; }
+  .txn-amt { font-size: 15px; }
+  .txn-more { align-self: flex-start; margin-top: 6px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); font-size: 14px; font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: pointer; min-height: 0; }
+  .txn-more:hover { color: var(--text-primary); border-color: var(--text-muted); }
+  #activity-box .txn-list { max-height: none; overflow: visible; }
+
+  /* Preset card colors */
+  .card-color-btn { width: 20px; height: 20px; min-height: 0 !important; padding: 0; flex-shrink: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--text-primary) 70%, transparent); background: var(--sw); cursor: pointer; box-shadow: 0 0 0 2px rgba(0,0,0,0.25); }
+  .card-color-btn:hover { transform: scale(1.1); }
+  .swatch-pop { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px; margin: 0 0 10px; }
+  .swatch-grid { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+  .swatch { aspect-ratio: 1; width: 100%; min-height: 0 !important; padding: 0; border-radius: 50%; border: 0; background: var(--sw); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-primary); }
+  .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .swatch-custom { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; position: relative; }
+  .swatch-custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .swatch-custom-dot { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#ef4444, #f59e0b, #10b981, #00a9e0, #6366f1, #a855f7, #ef4444); position: relative; }
+  .swatch-custom.on .swatch-custom-dot { background: var(--sw); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-primary); }
+  .new-card-swatches { max-width: 360px; }
+  .new-card-swatches .swatch-grid { gap: 8px; }
+  .swatch, .swatch:hover, .swatch:active, .card-color-btn, .card-color-btn:hover, .card-color-btn:active { background: var(--sw) !important; }
+  /* Paged lists */
+  .list-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; margin-top: 2px; border-top: 1px solid var(--border); }
+  .sa-list .list-pager { padding: 8px 10px; margin: 0; }
+  .list-pager span { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .list-pager button { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 999px; cursor: pointer; min-height: 0; }
+  .list-pager button:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-muted); }
+  .list-pager button:disabled { opacity: 0.35; cursor: default; }
+  .bank-chip-more { padding: 7px 14px; border-radius: 999px; border: 1px dashed var(--border); background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; min-height: 0; }
+  .txn-more { display: none !important; }
+  /* Planner result rows: a little tighter */
+  .planner-row { padding: 9px 12px; margin-top: 6px; }
+  .sa-item.first-visible, .txn-list > .txn-row.first-visible { border-top: 0; }
+  /* Debt-free card: what you actually paid down per period */
+  .pace-rows { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .pace-row .pr-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; }
+  .pace-row .pr-l { color: var(--text-secondary); font-weight: 600; }
+  .pace-row .pr-l em { font-style: normal; font-weight: 400; color: var(--text-muted); }
+  .pace-row .pr-net { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pace-row .pr-net.down { color: var(--success); }
+  .pace-row .pr-net.up { color: var(--danger); }
+  .pace-row .pr-bars { display: grid; gap: 3px; margin: 5px 0 3px; }
+  .pace-row .pr-bars i { display: block; height: 5px; border-radius: 999px; min-width: 2px; }
+  .pace-row .pr-bars i.paid { background: var(--success); }
+  .pace-row .pr-bars i.charged { background: var(--text-muted); opacity: 0.6; }
+  .pace-row .pr-sub { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .pace-row.partial { opacity: 0.75; }
+  /* Debt-free breakdown: tucked away, one line per period */
+  .pace-more { margin-top: 10px; }
+  .pace-more > summary { cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+  .pace-more > summary::-webkit-details-marker { display: none; }
+  .pace-more > summary::after { content: '\203A'; font-size: 16px; transition: transform 0.15s ease; }
+  .pace-more[open] > summary::after { transform: rotate(90deg); }
+  .pace-more > summary:hover { color: var(--text-primary); }
+  .pace-switch { margin: 10px 0 6px; }
+  .pace-rows { gap: 0; margin-top: 4px; }
+  .pace-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .pace-row:first-child { border-top: 0; }
+  .pace-row .pr-l { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+  .pace-row .pr-sub { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+  .pace-row .pr-net { font-size: 14px; }
+  .pace-row.partial { opacity: 0.7; }
+
+  /* Mood glow behind the page */
+  @property --mood { syntax: '<color>'; inherits: true; initial-value: rgba(0,0,0,0); }
+  :root { transition: --mood 0.9s ease; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(1200px 560px at 50% -140px, color-mix(in srgb, var(--mood) 26%, transparent), transparent 72%),
+      radial-gradient(900px 420px at 50% calc(100% + 160px), color-mix(in srgb, var(--mood) 12%, transparent), transparent 70%);
+  }
+  :root:not([data-theme="dark"]) body::before {
+    background:
+      radial-gradient(1200px 560px at 50% -140px, color-mix(in srgb, var(--mood) 20%, transparent), transparent 72%),
+      radial-gradient(900px 420px at 50% calc(100% + 160px), color-mix(in srgb, var(--mood) 10%, transparent), transparent 70%);
+  }
+  .mood-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--mood); margin-left: 6px; vertical-align: 1px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--mood) 25%, transparent); }
+  @media (prefers-reduced-motion: reduce) { :root { transition: none; } }
+
+  /* ================= App feel on phones ================= */
+  .tab-ico { display: none; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-btn[data-tab="more"] .tab-ico { fill: currentColor; stroke: none; }
+  .hdr-ico { display: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .fab, .sheet-backdrop, .ptr, .sheet-grab { display: none; }
+  .cards-dots { display: none; }
+
+  @media (max-width: 640px) {
+    /* Docked bottom tab bar with icons */
+    .tab-bar { left: 0 !important; right: 0 !important; bottom: 0 !important; border-radius: 0 !important; border: 0 !important; border-top: 1px solid var(--border) !important;
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom)) !important; gap: 0 !important;
+      background: color-mix(in srgb, var(--surface) 88%, transparent) !important; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: none !important; }
+    .tab-btn { display: flex !important; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px !important; border-radius: 12px !important; background: transparent !important; color: var(--text-muted) !important; min-height: 52px; }
+    .tab-btn .tab-ico { display: block; }
+    .tab-btn .tab-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.1px; }
+    .tab-btn.active { color: var(--text-primary) !important; }
+    .tab-btn.active .tab-ico { stroke-width: 2.2; }
+    .tab-btn.active::before { content: ''; position: absolute; top: 0; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--text-primary); }
+    .tab-btn { position: relative; }
+    body { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+
+    /* Compact header with icon buttons */
+    .header-row { margin-bottom: 14px !important; align-items: center !important; flex-wrap: nowrap !important; }
+    .header-row h1 { font-size: 22px !important; margin: 0 !important; }
+    .header-row .subtitle { display: none; }
+    .header-row > div:last-child { width: auto !important; flex: 0 0 auto !important; }
+    .header-row #theme-toggle, .header-row #save-btn { flex: 0 0 auto !important; width: 42px !important; height: 42px; min-height: 42px; padding: 0 !important; display: inline-grid; place-items: center; border-radius: 12px; margin: 0 !important; }
+    .header-row .btn-label { display: none; }
+    .header-row .hdr-ico { display: block; }
+    #save-status { position: absolute; right: 14px; top: calc(env(safe-area-inset-top) + 62px); font-size: 12px !important; }
+
+    /* Swipeable cards */
+    .cards-grid { display: flex !important; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px !important; margin: 0 -14px; padding: 2px 14px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+    .cards-grid::-webkit-scrollbar { display: none; }
+    .cards-grid > .card-col { flex: 0 0 84%; scroll-snap-align: center; }
+    .cards-dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 22px; }
+    .cards-dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--border); transition: width 0.2s ease, background 0.2s ease; }
+    .cards-dots i.on { width: 18px; background: var(--text-secondary); }
+
+    /* Floating + and the log form as a bottom sheet */
+    .fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 60; width: 56px; height: 56px; border-radius: 18px; border: 0; background: var(--text-primary); color: var(--bg); box-shadow: 0 10px 28px rgba(0,0,0,0.35); cursor: pointer; }
+    .fab svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+    body:not(:has([data-tab-panel="overview"].active)) .fab { display: none; }
+    body.log-sheet-open .fab { display: none; }
+    #manual-log-box, #manual-log-toggle-btn { display: none !important; }
+    p:has(> #manual-log-toggle-btn) { display: none; }
+    body.log-sheet-open #manual-log-box { display: block !important; position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; margin: 0; border-radius: 22px 22px 0 0; border-bottom: 0;
+      padding: 10px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 85vh; overflow: auto; background: var(--surface); box-shadow: 0 -12px 40px rgba(0,0,0,0.4); animation: sheet-up 0.22s ease-out; }
+    body.log-sheet-open #manual-log-box .sheet-grab { display: block; width: 40px; height: 5px; border-radius: 999px; background: var(--border); margin: 0 auto 12px; }
+    body.log-sheet-open .sheet-backdrop { display: block; position: fixed; inset: 0; z-index: 85; background: rgba(0,0,0,0.5); animation: fade-in 0.2s ease-out; }
+    body.log-sheet-open { overflow: hidden; }
+    #manual-log-box .row { flex-direction: column; }
+    #manual-log-box .row > * { width: 100%; }
+
+    /* Pull to refresh */
+    .ptr { display: grid; place-items: center; position: fixed; top: calc(env(safe-area-inset-top) - 40px); left: 50%; transform: translate(-50%, 0); z-index: 70; width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 6px 18px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.15s ease; }
+    .ptr svg { width: 20px; height: 20px; fill: none; stroke: var(--text-secondary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .ptr.show { opacity: 1; }
+    .ptr.ready svg { stroke: var(--success); }
+    .ptr.spin { transition: transform 0.2s ease, opacity 0.15s ease; }
+    .ptr.spin svg { animation: ptr-spin 0.7s linear infinite; stroke: var(--success); }
+  }
+  @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { body.log-sheet-open #manual-log-box, body.log-sheet-open .sheet-backdrop { animation: none; } }
+  @media (max-width: 640px) {
+    .header-row { flex-direction: row !important; justify-content: space-between !important; }
+    .header-row > div:first-child { min-width: 0; text-align: left; }
+    .header-row h1 { text-align: left; white-space: nowrap; }
+    .header-row .h1-long { display: none; }
+    .header-row > div:last-child { display: flex !important; gap: 8px !important; flex-wrap: nowrap !important; }
+  }
+
+  /* ================= Achievements ================= */
+  .ach-summary { display: flex; align-items: center; gap: 14px; margin: -4px 0 16px; }
+  .form-box .ach-summary p { margin: 0; font-size: 15px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+  .ach-summary b { color: var(--text-primary); font-size: 18px; }
+  .ach-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 6px 0 4px; }
+  .ach-bar.wide { flex: 1; margin: 0; }
+  .ach-bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .ach-next, .ach-grid { display: grid; gap: 8px; margin-bottom: 16px; }
+  .ach-next { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ach-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .ach { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); min-width: 0; }
+  .ach.big { padding: 12px 14px; border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .ach-ico { flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+  .ach-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .ach.got .ach-ico { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); border-color: transparent; }
+  .ach.got .ach-bar i { background: var(--success); }
+  .ach-body { min-width: 0; flex: 1; }
+  .form-box .ach-name { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .form-box .ach-desc { margin: 1px 0 0; font-size: 13px; font-weight: 400; color: var(--text-muted); line-height: 1.35; }
+  .form-box .ach-meta { margin: 0; font-size: 12px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .form-box .ach-meta.got { margin-top: 4px; color: var(--success); }
+  .ach:not(.got):not(.big) { opacity: 0.85; }
+  @media (max-width: 760px) { .ach-next { grid-template-columns: 1fr; } .ach-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .ach-grid { grid-template-columns: 1fr; } }
+
+  /* ================= Full-screen payoff celebration ================= */
+  .celebrate { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 24px;
+    background: radial-gradient(800px 500px at 50% 40%, color-mix(in srgb, var(--cel) 35%, transparent), transparent 70%), color-mix(in srgb, var(--bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fade-in 0.25s ease-out; }
+  .celebrate.out { opacity: 0; transition: opacity 0.2s ease; }
+  .cel-card { text-align: center; max-width: 420px; animation: cel-pop 0.45s cubic-bezier(.2,1.4,.4,1); }
+  .cel-ring { width: 96px; height: 96px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--cel) 22%, transparent); box-shadow: 0 0 0 10px color-mix(in srgb, var(--cel) 10%, transparent), 0 0 60px color-mix(in srgb, var(--cel) 45%, transparent); }
+  .cel-ring svg { width: 52px; height: 52px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 30; stroke-dashoffset: 30; animation: cel-draw 0.5s 0.25s ease-out forwards; }
+  .cel-kicker { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: color-mix(in srgb, var(--cel) 70%, var(--text-primary)); }
+  .cel-card h2 { margin: 0 0 10px; font-family: var(--display); font-size: clamp(30px, 7vw, 42px); line-height: 1.1; letter-spacing: -0.8px; color: var(--text-primary); }
+  .cel-sub { margin: 0 0 22px; font-size: 17px; color: var(--text-secondary); line-height: 1.45; }
+  .cel-card .primary { min-width: 180px; padding: 12px 20px; font-size: 17px; border-radius: 14px; }
+  @keyframes cel-pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes cel-draw { to { stroke-dashoffset: 0; } }
+  #confetti-canvas { z-index: 210 !important; }
+
+  /* ================= App lock ================= */
+  .lock-screen { display: none; }
+  .app-locked .lock-screen { display: grid; position: fixed; inset: 0; z-index: 300; place-items: center; padding: 24px; background: var(--bg); }
+  .app-locked body > .wrap, .app-locked .tab-bar, .app-locked .fab { visibility: hidden !important; }
+  .app-locked body { overflow: hidden; }
+  .lock-card { text-align: center; max-width: 340px; }
+  .lock-ico { width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 22px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--border); }
+  .lock-ico svg { width: 32px; height: 32px; fill: none; stroke: var(--text-primary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .lock-card h2 { margin: 0 0 8px; font-size: 22px; color: var(--text-primary); }
+  .lock-sub { margin: 0 0 20px; font-size: 15px; color: var(--text-muted); line-height: 1.45; }
+  .lock-card .primary { min-width: 200px; padding: 12px 20px; font-size: 17px; border-radius: 14px; }
+  .lock-err { min-height: 20px; margin: 12px 0 4px; font-size: 14px; color: var(--danger); }
+  .lock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .lock-on { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--success); font-size: 15px; }
+  .lock-on i { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+  .lock-after { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text-secondary); }
+  .lock-after select { width: auto; }
+  .form-box p.lock-msg { margin: 8px 0 0; font-size: 14px; font-weight: 400; color: var(--danger); }
+  .ach-all { margin-top: 4px; }
+  .ach-all .ach-grid:last-child { margin-bottom: 0; }
+  .ach-next { margin-bottom: 4px; }
 </style>
 </head>
 <body>
+<div class="lock-screen" id="lock-screen" role="dialog" aria-modal="true" aria-labelledby="lock-title">
+  <div class="lock-card">
+    <div class="lock-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg></div>
+    <h2 id="lock-title">Payoff Tracker is locked</h2>
+    <p class="lock-sub">Use Face ID, Touch ID, your fingerprint or your device PIN to open it.</p>
+    <button type="button" class="primary" id="lock-unlock-btn">Unlock</button>
+    <p class="lock-err" id="lock-err" role="alert"></p>
+    <button type="button" class="reset-link" id="lock-reset-btn" hidden>Can't unlock? Turn the lock off</button>
+  </div>
+</div>
+<script>
+  // Lock before anything is painted, if the lock is on for this device.
+  (function () {
+    try {
+      if (/[?&]demo=1\b/.test(location.search)) return;
+      var cfg = JSON.parse(localStorage.getItem('cc-tracker-lock') || 'null');
+      if (cfg && cfg.credId) document.documentElement.classList.add('app-locked');
+    } catch (e) {}
+  })();
+</script>
+<div class="ptr" id="ptr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3.5V8h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20.5V16h-4.5"/></svg></div>
+<button type="button" class="fab" id="log-fab" aria-label="Log a payment or charge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+<div class="sheet-backdrop" id="sheet-backdrop"></div>
 <div class="wrap">
   <div class="header-row" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:28px">
     <div>
-      <h1 style="margin-bottom:6px">Credit Card Payoff Tracker</h1>
+      <h1 style="margin-bottom:6px"><span class="h1-long">Credit Card </span>Payoff Tracker</h1>
       <p class="subtitle" style="margin-bottom:0">Track balances, log payments, and see your debt-free date get closer.</p>
     </div>
     <div style="text-align:right">
-      <button id="theme-toggle" type="button" style="white-space:nowrap;margin-right:8px">Dark mode</button><button class="primary" id="save-btn" style="white-space:nowrap">Save</button>
+      <button id="theme-toggle" type="button" style="white-space:nowrap;margin-right:8px" aria-label="Switch theme">Dark mode</button><button class="primary" id="save-btn" style="white-space:nowrap" aria-label="Save and sync"><svg class="hdr-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3.5V8h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20.5V16h-4.5"/></svg><span class="btn-label">Save</span></button>
       <p id="save-status" style="font-size:14px;color:var(--text-muted);margin:6px 0 0"></p>
     </div>
   </div>
 
   <nav class="tab-bar" id="tab-bar" aria-label="Sections">
-    <button class="tab-btn active" data-tab="overview">Overview</button>
-    <button class="tab-btn" data-tab="planner">Planner</button>
-    <button class="tab-btn" data-tab="rewards">Rewards</button>
-    <button class="tab-btn" data-tab="more">More</button>
+    <button class="tab-btn active" data-tab="overview"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/></svg><span class="tab-lbl">Overview</span></button>
+    <button class="tab-btn" data-tab="planner"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span class="tab-lbl">Planner</span></button>
+    <button class="tab-btn" data-tab="rewards"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg><span class="tab-lbl">Rewards</span></button>
+    <button class="tab-btn" data-tab="more"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18.5" cy="12" r="1.4"/></svg><span class="tab-lbl">More</span></button>
   </nav>
 
   <div id="install-banner-box"></div>
@@ -702,7 +1132,14 @@
     <div class="hero-main">
       <p class="label">Total owed</p>
       <p class="value" id="total-owed">$0.00</p>
-      <p class="delta-pill" id="month-net">$0.00</p>
+      <div class="delta-row">
+        <p class="delta-pill" id="month-net">$0.00</p>
+        <div class="range-switch mini" id="delta-range" role="group" aria-label="Compare with">
+          <button type="button" data-delta="week">1W</button>
+          <button type="button" data-delta="month">1M</button>
+        </div>
+      </div>
+      <p class="delta-was" id="delta-was"></p>
       <p id="net-position-sub" hidden></p>
     </div>
   </div>
@@ -756,6 +1193,7 @@
   <p style="margin:0 0 20px"><button class="reset-link" id="manual-log-toggle-btn">Log a payment or charge</button></p>
 
   <div class="form-box" id="manual-log-box">
+    <div class="sheet-grab" aria-hidden="true"></div>
     <p>Log a payment or charge</p>
     <div class="row">
       <select id="card-select"></select>
@@ -785,6 +1223,7 @@
     </select>
   </div>
   <div id="cards-list" class="cards-grid"></div>
+  <div class="cards-dots" id="cards-dots" aria-hidden="true"></div>
 
   <div class="form-box debt-split">
     <p>Where your debt sits</p>
@@ -820,190 +1259,187 @@
 
   <div class="tab-panel" data-tab-panel="planner">
 
-  <div class="form-box" id="planner-box">
-    <p>What's the smartest way to pay?</p>
-    <div class="row">
-      <select id="strategy-select" style="width:auto;flex:1;min-width:200px">
-        <option value="avalanche">Avalanche: highest APR first</option>
-        <option value="snowball">Snowball: smallest balance first</option>
-        <option value="hybrid">Smart: highest monthly cost first</option>
-      </select>
+  <div class="form-box" id="strategy-box">
+    <p>Payoff order</p>
+    <p class="box-sub">Everything on this page follows the order you pick here.</p>
+    <select id="strategy-select" hidden>
+      <option value="avalanche">Avalanche: highest APR first</option>
+      <option value="snowball">Snowball: smallest balance first</option>
+      <option value="hybrid">Smart: highest monthly cost first</option>
+    </select>
+    <div class="strategy-pick" id="strategy-pick" role="radiogroup" aria-label="Payoff order">
+      <button type="button" role="radio" data-strategy="avalanche"><b>Avalanche</b><span>Highest APR first. Usually saves the most interest.</span></button>
+      <button type="button" role="radio" data-strategy="snowball"><b>Snowball</b><span>Smallest balance first. Clears whole cards sooner.</span></button>
+      <button type="button" role="radio" data-strategy="hybrid"><b>Smart</b><span>Biggest monthly interest cost first.</span></button>
     </div>
-    <div class="row">
-      <div class="money-input-wrap"><input id="planner-amount" type="number" step="0.01" placeholder="Cash available this month" /></div>
-      <button class="primary" id="planner-btn">Calculate</button>
-      <button id="planner-reset-btn">Reset</button>
-    </div>
-    <p style="margin:-4px 0 0"><button class="reset-link" id="planner-use-setaside-btn" style="font-size:15px;display:none"></button></p>
-    <div class="chart-box" id="planner-chart-box" style="height:200px;display:none;margin-top:14px;margin-bottom:0">
-      <canvas id="planner-chart" role="img" aria-label="Bar chart of recommended payment amount per card"></canvas>
-    </div>
-    <div id="planner-result"></div>
   </div>
 
-  <div class="form-box" id="savings-box">
-    <p>How much could a smarter plan save you?</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
-    <div class="row">
-      <div class="money-input-wrap"><input id="savings-amount" type="number" step="0.01" placeholder="Usual monthly payment" /></div>
-      <button class="primary" id="savings-btn">Project savings</button>
-      <button id="savings-reset-btn">Reset</button>
+  <div class="plan-grid">
+    <div class="form-box" id="planner-box">
+      <p>Split this month's cash</p>
+      <p class="box-sub">Enter what you can pay this month to see how much goes to each card.</p>
+      <div class="tool-row">
+        <div class="money-input-wrap"><input id="planner-amount" type="number" step="0.01" placeholder="Cash available this month" aria-label="Cash available this month" /></div>
+        <button class="primary" id="planner-btn">Show split</button>
+        <button id="planner-reset-btn">Clear</button>
+      </div>
+      <p class="tool-link"><button class="reset-link" id="planner-use-setaside-btn" style="display:none"></button></p>
+      <div class="chart-box" id="planner-chart-box" style="display:none">
+        <canvas id="planner-chart" role="img" aria-label="Bar chart of recommended payment amount per card"></canvas>
+      </div>
+      <div id="planner-result"></div>
     </div>
-    <div id="savings-result"></div>
-  </div>
 
-  <div class="form-box" id="whatif-box">
-    <p>What if you paid more each month?</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Drag the slider to see your debt-free date change. Uses the payoff strategy chosen above.</p>
-    <input type="range" id="whatif-slider" min="0" max="1000" step="10" value="300" style="width:100%" />
-    <div style="display:flex;justify-content:space-between;margin-top:6px">
-      <span style="font-size:15px;color:var(--text-muted)">$0/mo</span>
-      <span id="whatif-amount" style="font-size:18px;font-weight:700;color:var(--accent-bright)">$300/mo</span>
-      <span id="whatif-max" style="font-size:15px;color:var(--text-muted)">$1,000/mo</span>
+    <div class="form-box" id="target-box">
+      <p>Hit a target date</p>
+      <p class="box-sub">Pick when you want to be debt-free to see what to pay each month.</p>
+      <div class="tool-row">
+        <input id="target-date" type="date" aria-label="Target debt-free date" />
+        <button class="primary" id="target-btn">Calculate</button>
+        <button id="target-reset-btn">Clear</button>
+      </div>
+      <div id="target-result"></div>
     </div>
-    <div id="whatif-result" style="margin-top:14px"></div>
   </div>
 
   <div class="form-box" id="reserve-box">
     <p>Cash set aside for this month's payments</p>
-    <div class="row">
-      <select id="reserve-card-select" style="flex:1;min-width:170px">
-        <option value="">General — not tied to a card</option>
-      </select>
-      <input id="reserve-bank" type="text" list="reserve-bank-options" placeholder="Bank or account (optional)" style="flex:1;min-width:170px" />
+    <div id="affordability-box"></div>
+    <p class="value" id="reserve-total" hidden>$0.00</p>
+
+    <div class="sa-form">
+      <p class="sa-step" id="reserve-bank-label">Where's the money?</p>
+      <div class="bank-chips" id="reserve-bank-chips" role="group" aria-labelledby="reserve-bank-label"></div>
+      <input id="reserve-bank" type="text" list="reserve-bank-options" placeholder="Bank or account, e.g. Chase checking" aria-labelledby="reserve-bank-label" />
       <datalist id="reserve-bank-options"></datalist>
-    </div>
-    <div class="row">
-      <div class="money-input-wrap"><input id="reserve-amount" type="number" step="0.01" placeholder="Amount" /></div>
-      <input id="reserve-note" type="text" placeholder="What's this for? (optional)" style="flex:1;min-width:160px" />
-    </div>
-    <div class="row">
-      <button class="primary" id="reserve-btn">Set aside</button>
-      <button id="reserve-remove-btn">Remove</button>
-    </div>
-    <div class="summary" style="margin-top:14px;margin-bottom:14px">
-      <div>
-        <p class="label">Total set aside</p>
-        <p class="value" id="reserve-total" style="font-size:26px">$0.00</p>
+      <div class="sa-row">
+        <div class="money-input-wrap"><input id="reserve-amount" type="number" step="0.01" placeholder="Amount" aria-label="Amount" /></div>
+        <select id="reserve-card-select" aria-label="Which card it's for">
+          <option value="">For any card</option>
+        </select>
+        <input id="reserve-note" type="text" placeholder="Note (optional)" aria-label="Note" />
+        <div class="sa-btns">
+          <button class="primary" id="reserve-btn">Set aside</button>
+          <button id="reserve-remove-btn" title="Record money you took back out">Take out</button>
+        </div>
       </div>
     </div>
-    <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px;font-weight:600">Which card has money set aside</p>
-    <div id="reserve-per-card-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-    <p id="reserve-per-bank-label" style="font-size:15px;color:var(--text-secondary);margin:0 0 8px;font-weight:600;display:none">Which bank has the money</p>
-    <div id="reserve-per-bank-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
-    <div id="affordability-box"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:15px;color:var(--text-secondary);font-weight:500" id="reserve-chart-legend"></div>
-    <div class="chart-box" style="height:200px;margin-bottom:0">
-      <canvas id="reserve-chart" role="img" aria-label="Line chart of cumulative money set aside per card over time"></canvas>
+
+    <div class="sa-split" id="reserve-split">
+      <div>
+        <p class="sa-step" id="reserve-per-bank-label">By bank</p>
+        <div id="reserve-per-bank-list" class="sa-list"></div>
+      </div>
+      <div>
+        <p class="sa-step">By card</p>
+        <div id="reserve-per-card-list" class="sa-list"></div>
+      </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap;gap:8px">
-      <p class="hist-label" style="margin:0">Set-aside activity</p>
-      <select id="reserve-view-mode" style="width:auto;font-size:15px;padding:6px 10px">
+    <div class="block-head sa-activity-head">
+      <h3>Activity</h3>
+      <div class="range-switch mini" id="reserve-view-switch" role="group" aria-label="Group activity by">
+        <button type="button" data-mode="all">All</button>
+        <button type="button" data-mode="week">Week</button>
+        <button type="button" data-mode="month">Month</button>
+        <button type="button" data-mode="cycle">Cycle</button>
+      </div>
+      <select id="reserve-view-mode" hidden>
         <option value="all">All entries</option>
         <option value="week">By week</option>
         <option value="month" selected>By month</option>
         <option value="cycle">By billing cycle (30 days)</option>
       </select>
     </div>
-    <div id="reserve-history-list" style="display:flex;flex-direction:column;gap:0"></div>
+    <div id="reserve-history-list" class="txn-list"></div>
     <p class="footer-note" style="margin-top:10px;text-align:left">
       <button class="reset-link" id="reserve-reset-btn">Clear set-aside history</button>
     </p>
   </div>
 
-  <div class="form-box" id="target-box">
-    <p>Set a target payoff date</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Uses the strategy selected above</p>
-    <div class="row">
-      <input id="target-date" type="date" style="flex:1;min-width:140px" />
-      <button class="primary" id="target-btn">Calculate</button>
-      <button id="target-reset-btn">Reset</button>
-    </div>
-    <div id="target-result"></div>
+  <div class="form-box" id="whatif-box">
+    <p>Pay more, finish sooner</p>
+    <p class="box-sub">Drag to set how much you'd pay each month across all cards.</p>
+    <p class="whatif-amt" id="whatif-amount">$300/mo</p>
+    <input type="range" id="whatif-slider" min="0" max="1000" step="10" value="300" aria-label="Monthly payment" />
+    <div class="whatif-scale"><span>$0/mo</span><span id="whatif-max">$1,000/mo</span></div>
+    <div id="whatif-result"></div>
+  </div>
+
+  <div class="form-box" id="savings-box" hidden>
+    <div class="money-input-wrap"><input id="savings-amount" type="number" step="0.01" /></div>
+    <button id="savings-btn">Project savings</button>
+    <button id="savings-reset-btn">Clear</button>
+    <div id="savings-result"></div>
   </div>
 
   </div>
 
   <div class="tab-panel" data-tab-panel="rewards">
 
+  <div class="tiles rewards-tiles">
+    <div class="tile"><p class="t-label">Cashback</p><p class="t-value" id="rewards-cashback-total">$0.00</p><p class="t-sub">Earned minus redeemed</p></div>
+    <div class="tile"><p class="t-label">Points</p><p class="t-value" id="rewards-points-total">0</p><p class="t-sub">Earned minus redeemed</p></div>
+  </div>
+
   <div class="form-box" id="rewards-box">
-    <p>Rewards &amp; points</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Tracked separately from your debt. Shows what you've earned and used.</p>
-    <div class="row">
-      <select id="rewards-card-select" style="flex:1;min-width:160px"></select>
-      <select id="rewards-type-select" style="width:110px">
-        <option value="points">Points</option>
-        <option value="cashback">Cashback $</option>
-      </select>
-      <select id="rewards-action-select" style="width:110px">
+    <p>Log rewards</p>
+    <p class="box-sub">Tracked separately from your debt.</p>
+    <div class="rw-form">
+      <select id="rewards-card-select" aria-label="Card"></select>
+      <select id="rewards-action-select" aria-label="Earned or redeemed">
         <option value="earn">Earned</option>
         <option value="redeem">Redeemed</option>
       </select>
-    </div>
-    <div class="row">
-      <input id="rewards-amount" type="number" step="0.01" placeholder="Amount" style="flex:1" />
-      <input id="rewards-note" type="text" placeholder="Note (optional)" style="flex:2" />
+      <select id="rewards-type-select" aria-label="Reward type">
+        <option value="points">Points</option>
+        <option value="cashback">Cashback $</option>
+      </select>
+      <input id="rewards-amount" type="number" step="0.01" placeholder="Amount" aria-label="Amount" />
+      <input id="rewards-note" type="text" placeholder="Note (optional)" aria-label="Note" />
       <button class="primary" id="rewards-btn">Log entry</button>
     </div>
-    <div class="summary" style="margin-top:14px;margin-bottom:14px">
-      <div>
-        <p class="label">Total cashback (net)</p>
-        <p class="value" id="rewards-cashback-total" style="font-size:22px;color:var(--success)">$0.00</p>
-      </div>
-      <div class="right">
-        <p class="label">Total points (net)</p>
-        <p class="value" id="rewards-points-total" style="font-size:22px">0</p>
-      </div>
-    </div>
     <div class="rewards-charts-row">
-      <div class="chart-box" style="height:200px;margin-bottom:0;flex:1;min-width:220px">
-        <canvas id="rewards-cashback-chart" role="img" aria-label="Bar chart of net cashback earned per card"></canvas>
+      <div class="chart-box"><canvas id="rewards-cashback-chart" role="img" aria-label="Bar chart of net cashback earned per card"></canvas></div>
+      <div class="chart-box"><canvas id="rewards-points-chart" role="img" aria-label="Bar chart of net points earned per card"></canvas></div>
+    </div>
+    <div class="sa-split">
+      <div>
+        <p class="sa-step">By card</p>
+        <div id="rewards-per-card-list" class="sa-list"></div>
       </div>
-      <div class="chart-box" style="height:200px;margin-bottom:0;flex:1;min-width:220px">
-        <canvas id="rewards-points-chart" role="img" aria-label="Bar chart of net points earned per card"></canvas>
+      <div>
+        <p class="sa-step">Recent activity</p>
+        <div id="rewards-history-list" class="txn-list"></div>
       </div>
     </div>
-    <div id="rewards-per-card-list"></div>
-    <p class="hist-label" style="margin-top:16px">Recent rewards activity</p>
-    <div id="rewards-history-list"></div>
-    <p class="footer-note" style="margin-top:10px;text-align:left">
-      <button class="reset-link" id="rewards-reset-btn">Clear rewards history</button>
-    </p>
+    <p class="footer-note box-foot"><button class="reset-link" id="rewards-reset-btn">Clear rewards history</button></p>
   </div>
 
   <div class="form-box" id="loyalty-box">
-    <p>Point &amp; mile balances</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Fill these in with the bookmarklet below, or type them yourself. No bank logins are stored.</p>
+    <p>Point and mile balances</p>
+    <p class="box-sub">Type balances in yourself, or update them with the bookmarklet below. No bank logins are stored.</p>
     <div id="loyalty-list"></div>
-    <div class="row" style="margin-top:4px">
-      <input id="loyalty-name" type="text" placeholder="Program name (e.g. Chase Ultimate Rewards)" style="flex:2;min-width:160px" />
-      <input id="loyalty-balance" type="number" step="1" placeholder="Balance" style="width:100px" />
-      <input id="loyalty-value" type="number" step="0.01" placeholder="¢/point (optional)" style="width:130px" />
+    <div class="ly-form">
+      <input id="loyalty-name" type="text" placeholder="Program, e.g. Chase Ultimate Rewards" aria-label="Program name" />
+      <input id="loyalty-balance" type="number" step="1" placeholder="Balance" aria-label="Balance" />
+      <input id="loyalty-value" type="number" step="0.01" placeholder="Cents per point (optional)" aria-label="Cents per point" />
+      <button class="primary" id="loyalty-add-btn">Save program</button>
     </div>
-    <div class="row">
-      <button class="primary" id="loyalty-add-btn" style="flex:1">Add / update program</button>
-    </div>
-    <p class="hist-label" style="margin-top:16px">Bulk import (CSV)</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:0 0 8px">Format: <code>program,balance,date</code> — one per line. Date is optional (defaults to today); matches by program name.</p>
-    <div class="row">
-      <textarea id="loyalty-csv" rows="3" placeholder="Chase Ultimate Rewards,84200,2026-08-20&#10;Amex Membership Rewards,51000" style="flex:1;font-family:monospace;font-size:15px"></textarea>
-    </div>
-    <div class="row">
-      <button id="loyalty-import-btn" style="flex:1">Import CSV</button>
-    </div>
-    <p id="loyalty-import-status" style="font-size:15px;color:var(--text-muted);margin:8px 0 0"></p>
-  </div>
-
-  <div class="form-box" id="loyalty-bookmarklet-box">
-    <p>Update balances with a bookmarklet (desktop Chrome)</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">
-      Two separate bookmarks, so you can't mix them up. Sign in to your bank or rewards site yourself, click a bookmark, then click the number on the page. It only runs when you click, and nothing is stored.
-    </p>
+    <details class="sub-detail">
+      <summary>Import several from CSV</summary>
+      <p class="box-sub">One per line: <code>program,balance,date</code>. Date is optional (defaults to today). Matches by program name.</p>
+      <textarea id="loyalty-csv" rows="3" placeholder="Chase Ultimate Rewards,84200,2026-08-20&#10;Amex Membership Rewards,51000"></textarea>
+      <button id="loyalty-import-btn">Import CSV</button>
+      <p id="loyalty-import-status" class="box-sub" style="margin-top:8px"></p>
+    </details>
+    <details class="sub-detail" id="loyalty-bookmarklet-box">
+      <summary>Update balances with a bookmarklet (desktop Chrome)</summary>
+      <p class="box-sub">Two separate bookmarks, so you can't mix them up. Sign in to your bank or rewards site yourself, click a bookmark, then click the number on the page. It only runs when you click, and nothing is stored.</p>
     <p id="bookmarklet-secret-missing" style="font-size:15px;color:var(--danger);margin:0 0 12px;display:none">
       Enter your APP_SECRET in the "Connect your bank" box (More tab) first — the bookmarklet reuses that same secret.
     </p>
     <div class="row">
-      <button class="primary" id="bookmarklet-generate-btn" style="flex:1">Generate bookmarklets</button>
+      <button class="primary" id="bookmarklet-generate-btn">Generate bookmarklets</button>
     </div>
     <div id="bookmarklet-output" style="margin-top:14px;display:none">
       <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px">Drag both links to your bookmarks bar:</p>
@@ -1013,51 +1449,73 @@
       </div>
       <p style="font-size:14px;color:var(--text-muted);margin:8px 0 0">If dragging doesn't work, right-click your bookmarks bar → "Add page" → paste the link's URL manually.</p>
     </div>
+    </details>
   </div>
 
   </div>
 
   <div class="tab-panel" data-tab-panel="more">
 
-  <div class="form-box" id="achievements-box">
-    <p>Achievements</p>
-    <div id="achievements-list" class="achievements-grid"></div>
-  </div>
-
+  <div class="more-grid">
+    <div class="form-box" id="activity-box">
+      <p>Plaid recent activity</p>
+      <div id="history-list" class="txn-list"></div>
+    </div>
   <div class="form-box" id="add-card-box">
     <p>Add a card</p>
-    <div class="row">
-      <input id="new-card-name" type="text" placeholder="Card name" style="flex:2;min-width:160px" />
-      <input id="new-card-apr" type="number" step="0.01" placeholder="APR %" style="width:90px" />
+    <div class="ac-grid">
+      <input id="new-card-name" type="text" placeholder="Card name" aria-label="Card name" class="ac-name" />
+      <input id="new-card-apr" type="number" step="0.01" placeholder="APR %" aria-label="APR" />
+      <input id="new-card-due" type="date" aria-label="Due date" />
+      <div class="money-input-wrap"><input id="new-card-balance" type="number" step="0.01" placeholder="Current balance" aria-label="Current balance" /></div>
+      <div class="money-input-wrap"><input id="new-card-min" type="number" step="0.01" placeholder="Min payment" aria-label="Minimum payment" /></div>
+      <div class="money-input-wrap"><input id="new-card-limit" type="number" step="0.01" placeholder="Credit limit" aria-label="Credit limit" /></div>
     </div>
-    <div class="row">
-      <div class="money-input-wrap"><input id="new-card-balance" type="number" step="0.01" placeholder="Current balance" /></div>
-      <div class="money-input-wrap"><input id="new-card-min" type="number" step="0.01" placeholder="Min payment" /></div>
-      <div class="money-input-wrap"><input id="new-card-limit" type="number" step="0.01" placeholder="Credit limit" /></div>
-    </div>
-    <div class="row">
-      <input id="new-card-due" type="date" style="flex:1;min-width:140px" />
-    </div>
-    <div class="row" style="display:block">
-      <p style="font-size:15px;color:var(--text-secondary);margin:0 0 8px">Categories (pick any that apply)</p>
-      <div id="new-card-categories" style="display:flex;flex-wrap:wrap;gap:10px 16px"></div>
-      <input id="new-card-other-text" type="text" placeholder="Type your custom category" style="display:none;margin-top:10px;width:100%" />
-    </div>
-    <div class="row">
-      <div style="display:flex;align-items:center;gap:8px">
-        <label for="new-card-color" style="font-size:15px;color:var(--text-secondary)">Color</label>
-        <input id="new-card-color" type="color" value="#4FA3FF" class="color-picker-input" />
-      </div>
+    <p class="sa-step" style="margin-top:14px">Categories</p>
+    <div id="new-card-categories" class="chip-checks"></div>
+    <input id="new-card-other-text" type="text" placeholder="Type your custom category" style="display:none;margin-top:10px;width:100%" />
+    <p class="sa-step" style="margin-top:14px">Color</p>
+    <input id="new-card-color" type="hidden" value="#4FA3FF" />
+    <div id="new-card-swatches" class="new-card-swatches"></div>
+    <div class="ac-foot">
       <button class="primary" id="add-card-btn">Add card</button>
     </div>
   </div>
+  </div>
 
-  <p class="hist-label">Recent payment activity</p>
-  <div id="history-list"></div>
+  <div class="form-box" id="lock-box">
+    <p>App lock</p>
+    <p class="box-sub">Ask for Face ID, Touch ID, your fingerprint or device PIN when the app opens on this device. It hides the screen from anyone who picks up your phone; it doesn't encrypt your data.</p>
+    <div id="lock-settings"></div>
+  </div>
+
+  <div class="form-box" id="plaid-box">
+    <p>Connect your bank (beta)</p>
+    <p class="box-sub">Pull balances, statement amounts and due dates from your bank through Plaid, so you don't have to enter them by hand.</p>
+    <div id="plaid-secret-setup">
+      <div class="row">
+        <input id="plaid-app-secret-input" type="password" placeholder="Your plaid-bridge Worker's APP_SECRET" style="flex:1" />
+        <button id="plaid-app-secret-save-btn">Save</button>
+      </div>
+      <p class="box-sub" style="margin:4px 0 12px;font-size:14px">Saved only in this browser. It is never written to this file or synced to Supabase, so enter it again on each new device or browser.</p>
+    </div>
+    <div class="row">
+      <button class="primary" id="plaid-connect-btn">Connect your bank</button>
+      <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
+      <button id="plaid-refresh-connections-btn" style="display:none">Show connected banks</button>
+    </div>
+    <p id="plaid-status" style="font-size:15px;color:var(--text-secondary);margin:10px 0 0"></p>
+    <p id="plaid-last-sync" style="font-size:14px;color:var(--text-muted);margin:4px 0 0"></p>
+    <div id="plaid-sync-details" style="font-size:14px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
+    <div id="plaid-connections-list" style="margin:10px 0 0;display:flex;flex-direction:column;gap:6px"></div>
+    <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
+      <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect ALL banks &amp; delete stored access</button>
+    </p>
+  </div>
 
   <div class="form-box" id="sync-box">
     <p>Sync across devices</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Optional. Connect your own free Supabase database to see the same data on every device that uses your sync code.</p>
+    <p class="box-sub">Optional. Connect your own free Supabase database to see the same data on every device that uses your sync code.</p>
     <div id="sync-setup-fields">
       <div class="row">
         <input id="sync-url" type="text" placeholder="Supabase project URL" style="flex:2;min-width:220px" />
@@ -1082,55 +1540,35 @@
     <p id="sync-error" style="font-size:15px;color:var(--danger);margin:10px 0 0;display:none"></p>
   </div>
 
-  <div class="form-box" id="plaid-box">
-    <p>Connect your bank (beta)</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">Pull balances, statement amounts and due dates from your bank through Plaid, so you don't have to enter them by hand.</p>
-    <div id="plaid-secret-setup">
-      <div class="row">
-        <input id="plaid-app-secret-input" type="password" placeholder="Your plaid-bridge Worker's APP_SECRET" style="flex:1" />
-        <button id="plaid-app-secret-save-btn">Save</button>
-      </div>
-      <p style="font-size:14px;color:var(--text-muted);margin:2px 0 12px">Saved only in this browser. It is never written to this file or synced to Supabase, so enter it again on each new device or browser.</p>
-    </div>
-    <div class="row">
-      <button class="primary" id="plaid-connect-btn">Connect your bank</button>
-      <button id="plaid-sync-btn" style="display:none">Sync balances now</button>
-      <button id="plaid-refresh-connections-btn" style="display:none">Show connected banks</button>
-    </div>
-    <p id="plaid-status" style="font-size:15px;color:var(--text-secondary);margin:10px 0 0"></p>
-    <p id="plaid-last-sync" style="font-size:14px;color:var(--text-muted);margin:4px 0 0"></p>
-    <div id="plaid-sync-details" style="font-size:14px;color:var(--text-muted);margin:8px 0 0;font-family:monospace;white-space:pre-wrap;display:none;background:var(--surface-2);border-radius:8px;padding:10px"></div>
-    <div id="plaid-connections-list" style="margin:10px 0 0;display:flex;flex-direction:column;gap:6px"></div>
-    <p id="plaid-disconnect-wrap" style="margin:12px 0 0;display:none">
-      <button class="reset-link" id="plaid-disconnect-btn" style="color:var(--danger)">Disconnect ALL banks &amp; delete stored access</button>
-    </p>
-  </div>
-
   <div class="form-box" id="deleted-cards-box" style="display:none">
     <p>Deleted cards</p>
-    <p style="font-size:15px;color:var(--text-muted);margin:-8px 0 12px">
+    <p class="box-sub">
       Cards you've removed. If one was deleted by mistake, restore it here — otherwise Plaid will never re-add it, even if the bank connection is still active.
     </p>
     <div id="deleted-cards-list"></div>
   </div>
 
-  <p class="footer-note">
-    Saved locally in this browser only.
-    <button class="reset-link" id="undo-btn">Undo last entry</button>
-    ·
-    <button class="reset-link" id="restore-dates-btn">Restore original due dates</button>
-    ·
-    <button class="reset-link" id="reset-btn">Reset all data</button>
-    <br>
-    <button class="reset-link" id="reset-tracking-btn">Reset progress tracking (keep cards &amp; balances)</button>
-    <br>
-    <button class="reset-link" id="export-btn">Export backup file</button>
-    ·
-    <button class="reset-link" id="import-btn">Import backup file</button>
-    ·
-    <button class="reset-link" id="export-csv-btn">Export payment history (CSV)</button>
+  <div class="form-box" id="achievements-box">
+    <p>Achievements</p>
+    <div id="achievements-list"></div>
+  </div>
+
+  <div class="form-box" id="data-box">
+    <p>Your data</p>
+    <p class="box-sub">Everything is saved in this browser. Back it up, move it to another device, or start over.</p>
+    <div class="data-actions">
+      <button id="export-btn">Export backup file</button>
+      <button id="import-btn">Import backup file</button>
+      <button id="export-csv-btn">Export payment history (CSV)</button>
+      <button id="undo-btn">Undo last entry</button>
+      <button id="restore-dates-btn">Restore original due dates</button>
+    </div>
     <input type="file" id="import-file" accept=".json,application/json" style="display:none" />
-  </p>
+    <div class="data-danger">
+      <button class="reset-link" id="reset-tracking-btn">Restart progress (keeps cards and balances)</button>
+      <button class="reset-link danger-link" id="reset-btn">Reset all data</button>
+    </div>
+  </div>
 
   </div>
 
@@ -1382,6 +1820,55 @@ function monthNet() {
   return net;
 }
 
+// What you owed at a moment in the past, rebuilt the same way the trend chart
+// is (each card's starting balance plus everything logged before that moment,
+// never below $0 per card), so the pill and the chart always agree.
+function owedAt(when) {
+  const t = when.getTime();
+  const bal = {};
+  cards.forEach(c => { bal[c.id] = getCardStartBalance(c.id); });
+  history.filter(h => !h.deleted && new Date(h.date).getTime() < t).forEach(h => {
+    if (bal[h.cardId] != null) bal[h.cardId] += h.type === 'payment' ? -h.amount : h.amount;
+  });
+  return cards.reduce((sum, c) => sum + Math.max(0, bal[c.id]), 0);
+}
+
+function getDeltaRange() {
+  let v = null;
+  try { v = localStorage.getItem('cc-tracker-delta-range'); } catch (e) {}
+  return v === 'month' ? 'month' : 'week';
+}
+
+// Hero pill: how much what you owe has moved since a clear, dated point.
+// "1W" compares with 7 days ago; "1M" compares with the start of the month.
+function renderDeltaPill() {
+  const netEl = document.getElementById('month-net');
+  const wasEl = document.getElementById('delta-was');
+  if (!netEl) return;
+  const range = getDeltaRange();
+  const since = new Date();
+  if (range === 'month') { since.setDate(1); since.setHours(0, 0, 0, 0); }
+  else { since.setDate(since.getDate() - 7); since.setHours(0, 0, 0, 0); }
+  const before = owedAt(since);
+  const net = Math.round((totalOwed() - before) * 100) / 100;
+  const flat = Math.abs(net) < 0.005;
+  const period = range === 'month' ? 'this month' : 'this week';
+  netEl.className = 'delta-pill ' + (flat ? 'flat' : net < 0 ? 'good' : 'bad');
+  netEl.innerHTML = (flat ? '' : `<span aria-hidden="true">${net < 0 ? '\u2193' : '\u2191'}</span> `)
+    + (flat ? 'No change ' + period : fmt(Math.abs(net)) + (net < 0 ? ' down ' : ' up ') + period);
+  const sinceLabel = since.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (wasEl) wasEl.textContent = `You owed ${fmt(before)} on ${sinceLabel}`;
+  netEl.title = `Compared with what you owed at the start of ${sinceLabel}`;
+  document.querySelectorAll('#delta-range [data-delta]').forEach(b => b.classList.toggle('active', b.dataset.delta === range));
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('#delta-range [data-delta]');
+  if (!b) return;
+  try { localStorage.setItem('cc-tracker-delta-range', b.dataset.delta); } catch (err) {}
+  renderDeltaPill();
+});
+
 function getSortedCardsForDisplay() {
   const sortMode = document.getElementById('card-sort-select') ? document.getElementById('card-sort-select').value : 'custom';
   const list = [...cards];
@@ -1391,6 +1878,56 @@ function getSortedCardsForDisplay() {
   if (sortMode === 'apr-asc') return list.sort((a, b) => a.apr - b.apr);
   if (sortMode === 'category') return list.sort((a, b) => (a.categories?.[0] || '').localeCompare(b.categories?.[0] || ''));
   return list;
+}
+
+// Only one inline editor per card list at a time. Opening a new one cancels
+// any editor that's already open (unsaved text there is dropped), then
+// reopens the one that was clicked on the freshly rendered card.
+const CARD_EDITOR_CLASSES = ['card-color-btn', 'name-row', 'apr-row', 'promo-apr-row', 'category-badge-row', 'due-date-row', 'min-payment-row', 'statement-balance-row', 'credit-limit-row'];
+function closeOtherCardEditors(row) {
+  const list = document.getElementById('cards-list');
+  if (!list) return false;
+  const others = Array.from(list.querySelectorAll('[data-editing="true"]')).filter(el => el !== row);
+  if (!others.length) return false;
+  const cls = CARD_EDITOR_CLASSES.find(k => row.classList.contains(k));
+  const cardId = row.getAttribute('data-card-id');
+  render();
+  const again = cls && cardId ? list.querySelector('.' + cls + '[data-card-id="' + cardId + '"]') : null;
+  if (again) again.click();
+  return true;
+}
+
+// Preset card colors: 9 families, each in a light, normal and dark shade.
+const CARD_SWATCH_FAMILIES = [
+  { name: 'Blue',   shades: ['#9CCBFF', '#4FA3FF', '#2E77BB'] },
+  { name: 'Sky',    shades: ['#7DD3FC', '#00A9E0', '#0369A1'] },
+  { name: 'Indigo', shades: ['#A5B4FC', '#5C6BC0', '#3730A3'] },
+  { name: 'Purple', shades: ['#D8B4FE', '#A855F7', '#6B21A8'] },
+  { name: 'Rose',   shades: ['#FDA4AF', '#E11D48', '#9F1239'] },
+  { name: 'Orange', shades: ['#FDBA74', '#FF6000', '#9A3412'] },
+  { name: 'Green',  shades: ['#86EFAC', '#10B981', '#065F46'] },
+  { name: 'Gold',   shades: ['#FDE68A', '#F59E0B', '#B45309'] },
+  { name: 'Silver', shades: ['#E5E7EB', '#9CA3AF', '#4B5563'] }
+];
+function swatchGridHtml(current) {
+  const cur = (current || '').toLowerCase();
+  const shadeName = ['Light ', '', 'Dark '];
+  let html = '<div class="swatch-grid" role="group" aria-label="Card color">';
+  for (let i = 0; i < 3; i++) {
+    CARD_SWATCH_FAMILIES.forEach(f => {
+      const c = f.shades[i];
+      const label = shadeName[i] + (i === 1 ? f.name : f.name.toLowerCase());
+      html += `<button type="button" class="swatch${c.toLowerCase() === cur ? ' on' : ''}" data-color="${c}" style="--sw:${c}" aria-label="${label}" aria-pressed="${c.toLowerCase() === cur}" title="${label}"></button>`;
+    });
+  }
+  const isCustom = cur && !CARD_SWATCH_FAMILIES.some(f => f.shades.some(c => c.toLowerCase() === cur));
+  html += `</div><label class="swatch-custom${isCustom ? ' on' : ''}"><span class="swatch-custom-dot" style="--sw:${isCustom ? current : 'transparent'}"></span>Custom color<input type="color" value="${current || '#4FA3FF'}" /></label>`;
+  return html;
+}
+function renderNewCardSwatches() {
+  const box = document.getElementById('new-card-swatches');
+  if (!box) return;
+  box.innerHTML = swatchGridHtml(document.getElementById('new-card-color').value);
 }
 
 function renderCards() {
@@ -1431,7 +1968,7 @@ function renderCards() {
       <div class="card-face">
       <div class="card-chip" aria-hidden="true"></div>
       <div style="display:flex;align-items:center;gap:8px;margin:0 0 8px">
-        <input type="color" class="color-picker-input card-color-input" data-card-id="${c.id}" value="${c.color || '#4FA3FF'}" style="width:20px;height:20px;flex-shrink:0;padding:0" title="Change card color" />
+        <button type="button" class="card-color-btn" data-card-id="${c.id}" style="--sw:${c.color || '#4FA3FF'}" aria-label="Change color of ${esc(c.name)}" title="Change color"></button>
         <p class="name name-row" data-card-id="${c.id}" style="cursor:pointer;margin:0" title="Tap to rename">${esc(c.name)}</p>
       </div>
       <div class="category-badge-row${(c.categories && c.categories.length) ? '' : ' empty'}" data-card-id="${c.id}">${(c.categories && c.categories.length) ? c.categories.map(cat => `<span class="category-badge" style="border-color:${c.color};color:${c.color}">${esc(cat)}</span>`).join('') : `<span class="category-badge" style="border-color:var(--border);color:var(--text-muted)">+ Add category</span>`}</div>
@@ -1564,6 +2101,7 @@ function renderCards() {
   list.querySelectorAll('.due-date-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1589,6 +2127,7 @@ function renderCards() {
   list.querySelectorAll('.min-payment-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1672,6 +2211,7 @@ function renderCards() {
   list.querySelectorAll('.statement-balance-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1709,6 +2249,7 @@ function renderCards() {
   list.querySelectorAll('.credit-limit-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1728,6 +2269,39 @@ function renderCards() {
           render();
         }
       });
+    });
+  });
+
+  list.querySelectorAll('.card-color-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = btn.parentElement;
+      const open = row.nextElementSibling && row.nextElementSibling.classList.contains('swatch-pop');
+      if (open) { row.nextElementSibling.remove(); return; }
+      if (closeOtherCardEditors(btn)) return;
+      const cardId = btn.getAttribute('data-card-id');
+      const c = cards.find(x => x.id === cardId);
+      if (!c) return;
+      const pop = document.createElement('div');
+      pop.className = 'swatch-pop';
+      pop.dataset.editing = 'true';
+      pop.innerHTML = swatchGridHtml(c.color);
+      row.after(pop);
+      const col = btn.closest('.card-col');
+      const apply = (color, final) => {
+        c.color = color;
+        if (col) col.style.setProperty('--card-color', color);
+        btn.style.setProperty('--sw', color);
+        if (final) { saveData(); render(); }
+      };
+      pop.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const sw = ev.target.closest('.swatch');
+        if (sw) apply(sw.dataset.color, true);
+      });
+      const custom = pop.querySelector('.swatch-custom input');
+      custom.addEventListener('input', (ev) => apply(ev.target.value, false));
+      custom.addEventListener('change', (ev) => apply(ev.target.value, true));
     });
   });
 
@@ -1752,6 +2326,7 @@ function renderCards() {
   list.querySelectorAll('.name-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1797,6 +2372,7 @@ function renderCards() {
   list.querySelectorAll('.apr-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1829,6 +2405,7 @@ function renderCards() {
   list.querySelectorAll('.promo-apr-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1876,6 +2453,7 @@ function renderCards() {
   list.querySelectorAll('.category-badge-row').forEach(row => {
     row.addEventListener('click', () => {
       if (row.dataset.editing === 'true') return;
+      if (closeOtherCardEditors(row)) return;
       row.dataset.editing = 'true';
       const cardId = row.getAttribute('data-card-id');
       const c = cards.find(x => x.id === cardId);
@@ -1920,24 +2498,42 @@ function renderCards() {
   select.innerHTML = cards.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
+// One row style for every activity list (payments, set-aside, rewards).
+function txnRowHtml({ dir, title, meta, amount, amountClass, cardId, deleteAttr }) {
+  const card = cardId ? cards.find(c => c.id === cardId) : null;
+  const tag = card ? `<span class="sa-tag"><i style="background:${card.color}"></i>${esc(card.name)}</span>` : '';
+  const icon = dir === 'in' ? '+' : dir === 'down' ? '\u2193' : dir === 'up' ? '\u2191' : '\u2212';
+  return `
+    <span class="txn-icon ${dir}" aria-hidden="true">${icon}</span>
+    <div class="txn-main">
+      <div class="txn-title">${title}</div>
+      <div class="txn-meta">${meta ? `<span>${meta}</span>` : ''}${tag}</div>
+    </div>
+    <div class="txn-amt ${amountClass || ''}">${amount}</div>
+    ${deleteAttr ? `<button class="hist-delete-btn" ${deleteAttr} aria-label="Remove this entry" title="Delete this entry. Its amount comes off your totals too.">&times;</button>` : ''}`;
+}
+const txnDate = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
 function renderHistory() {
   const list = document.getElementById('history-list');
   list.innerHTML = '';
-  const sorted = history.filter(h => !h.deleted).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+  const sorted = history.filter(h => !h.deleted).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 25);
   if (sorted.length === 0) {
-    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No activity logged yet.</p>';
+    list.innerHTML = '<p class="sa-empty">No payments or charges logged yet.</p>';
     return;
   }
   sorted.forEach(h => {
-    const card = cards.find(c => c.id === h.cardId);
+    const isPay = h.type === 'payment';
     const row = document.createElement('div');
-    row.className = 'hist-row';
-    const sign = h.type === 'payment' ? '-' : '+';
-    const cls = h.type === 'payment' ? 'neg' : 'pos';
-    row.innerHTML = `
-      <div>${esc(card ? card.name : h.cardId)}${h.note ? ' — ' + esc(h.note) : ''}</div>
-      <div class="hist-amt ${cls}">${sign}${fmt(h.amount)}</div>
-    `;
+    row.className = 'txn-row';
+    row.innerHTML = txnRowHtml({
+      dir: isPay ? 'down' : 'up',
+      title: esc(h.note || (isPay ? 'Payment' : 'Charge')),
+      meta: txnDate(h.date),
+      amount: (isPay ? '\u2212' : '+') + fmt(h.amount),
+      amountClass: isPay ? 'good' : '',
+      cardId: h.cardId
+    });
     list.appendChild(row);
   });
 }
@@ -2577,103 +3173,165 @@ function renderPace() {
   text.style.color = 'var(--text-primary)';
 }
 
+// ---- Achievements: real milestones with progress you can watch move ----
+function achStats() {
+  const live = history.filter(h => !h.deleted);
+  const totalPaid = live.filter(h => h.type === 'payment').reduce((s, h) => s + h.amount, 0);
+  const owed = totalOwed();
+  let peak = owed;
+  try { const t = buildTrendData().totalSeries; if (t.length) peak = Math.max(owed, ...t); } catch (e) {}
+  const withLimit = cards.filter(c => c.limit > 0);
+  const limitTotal = withLimit.reduce((s, c) => s + c.limit, 0);
+  const util = limitTotal > 0 ? withLimit.reduce((s, c) => s + c.balance, 0) / limitTotal * 100 : null;
+  const savedAll = reserves.filter(r => !r.deleted && r.amount > 0).reduce((s, r) => s + r.amount, 0);
+  const setAside = reserves.filter(r => !r.deleted).reduce((s, r) => s + r.amount, 0);
+  const cashback = rewards.filter(r => !r.deleted && r.type === 'cashback' && r.amount > 0).reduce((s, r) => s + r.amount, 0);
+  const bestStreak = cards.reduce((m, c) => Math.max(m, c.cycleStreak || 0), 0);
+  const now = new Date();
+  const uncovered = cards.filter(c => c.balance > 0.005 && (c.min || 0) > 0.005 && c.lastMinPaidCycle !== getCardCycleKey(c, now));
+  const minsDue = uncovered.reduce((s, c) => s + (c.min || 0), 0);
+  const paidCards = cards.filter(c => c.balance <= 0.01).length;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const promoBeaten = cards.some(c => c.promoUntil && c.balance <= 0.01 && new Date(c.promoUntil + 'T00:00:00') >= today && (c.promoApr === 0 || c.promoApr === '0'));
+  return { payments: live.filter(h => h.type === 'payment').length, totalPaid, owed, peak, paidDown: Math.max(0, peak - owed), util, savedAll, setAside, cashback, bestStreak, minsDue, paidCards, promoBeaten };
+}
+
+const ACH_ICONS = {
+  pay: '<svg viewBox="0 0 24 24"><path d="M12 4v13M6 11l6 6 6-6"/><path d="M5 20h14"/></svg>',
+  win: '<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7"/></svg>',
+  habit: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.8-5"/></svg>',
+  save: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>'
+};
+const money = v => '$' + Math.round(v).toLocaleString('en-US');
+const atLeast = (cur, target, f = money) => ({ cur, target, text: `${f(Math.min(cur, target))} of ${f(target)}` });
+
 const ACHIEVEMENT_DEFS = [
-  {
-    id: 'first-payment', icon: '$', name: 'Getting started', desc: 'Log your first payment',
-    check: () => history.some(h => !h.deleted && h.type === 'payment')
-  },
-  {
-    id: 'paid-100', icon: '$', name: '$100 club', desc: 'Pay down $100 total',
-    check: () => history.filter(h => !h.deleted && h.type === 'payment').reduce((s, h) => s + h.amount, 0) >= 100
-  },
-  {
-    id: 'paid-500', icon: '$', name: '$500 club', desc: 'Pay down $500 total',
-    check: () => history.filter(h => !h.deleted && h.type === 'payment').reduce((s, h) => s + h.amount, 0) >= 500
-  },
-  {
-    id: 'paid-1000', icon: '$', name: '$1,000 club', desc: 'Pay down $1,000 total',
-    check: () => history.filter(h => !h.deleted && h.type === 'payment').reduce((s, h) => s + h.amount, 0) >= 1000
-  },
-  {
-    id: 'paid-2500', icon: '$', name: '$2,500 club', desc: 'Pay down $2,500 total',
-    check: () => history.filter(h => !h.deleted && h.type === 'payment').reduce((s, h) => s + h.amount, 0) >= 2500
-  },
-  {
-    id: 'first-payoff', icon: '\u2713', name: 'First payoff', desc: 'Pay off your first card',
-    check: () => cards.some(c => c.balance <= 0.01)
-  },
-  {
-    id: 'debt-free', icon: '\u2605', name: 'Debt free', desc: 'Pay off every card',
-    check: () => cards.length > 0 && cards.every(c => c.balance <= 0.01)
-  },
-  {
-    id: 'saver-500', icon: '\u25C6', name: 'Saver', desc: 'Set aside $500 total, all-time',
-    check: () => reserves.filter(r => !r.deleted && r.amount > 0).reduce((s, r) => s + r.amount, 0) >= 500
-  },
-  {
-    id: 'rewards-50', icon: '\u25C6', name: 'Rewards earner', desc: 'Earn $50+ in cashback',
-    check: () => rewards.filter(r => !r.deleted && r.type === 'cashback' && r.amount > 0).reduce((s, r) => s + r.amount, 0) >= 50
-  },
-  {
-    id: 'streak-3', icon: '\u25B2', name: '3-cycle streak', desc: 'Pay the minimum on a card 3 billing cycles in a row',
-    check: () => cards.some(c => (c.cycleStreak || 0) >= 3)
-  }
+  // Paying it down
+  { id: 'first-payment', group: 'Paying it down', icon: 'pay', name: 'Getting started', desc: 'Log or sync your first payment', progress: s => ({ cur: s.payments, target: 1, text: '0 of 1 payment' }) },
+  { id: 'paid-100', group: 'Paying it down', icon: 'pay', name: '$100 club', desc: 'Pay $100 toward your cards in total', progress: s => atLeast(s.totalPaid, 100) },
+  { id: 'paid-500', group: 'Paying it down', icon: 'pay', name: '$500 club', desc: 'Pay $500 toward your cards in total', progress: s => atLeast(s.totalPaid, 500) },
+  { id: 'paid-1000', group: 'Paying it down', icon: 'pay', name: '$1,000 club', desc: 'Pay $1,000 toward your cards in total', progress: s => atLeast(s.totalPaid, 1000) },
+  { id: 'paid-2500', group: 'Paying it down', icon: 'pay', name: '$2,500 club', desc: 'Pay $2,500 toward your cards in total', progress: s => atLeast(s.totalPaid, 2500) },
+  { id: 'paid-5000', group: 'Paying it down', icon: 'pay', name: '$5,000 club', desc: 'Pay $5,000 toward your cards in total', progress: s => atLeast(s.totalPaid, 5000) },
+  { id: 'paid-10000', group: 'Paying it down', icon: 'pay', name: '$10,000 club', desc: 'Pay $10,000 toward your cards in total', progress: s => atLeast(s.totalPaid, 10000) },
+  // Big wins
+  { id: 'first-payoff', group: 'Big wins', icon: 'win', name: 'First payoff', desc: 'Get a card to $0', progress: s => ({ cur: s.paidCards, target: 1, text: '0 of 1 card' }) },
+  { id: 'halfway', group: 'Big wins', icon: 'win', name: 'Halfway there', desc: 'Owe half of your highest balance or less', progress: s => ({ cur: s.peak > 0 ? s.paidDown / s.peak * 100 : 0, target: 50, text: `${Math.round(s.peak > 0 ? Math.min(50, s.paidDown / s.peak * 100) : 0)}% of 50% paid off` }) },
+  { id: 'promo-beater', group: 'Big wins', icon: 'win', name: 'Beat the promo', desc: 'Pay off a 0% promo card before the promo ends', progress: s => ({ cur: s.promoBeaten ? 1 : 0, target: 1, text: s.promoBeaten ? 'Done' : 'Not yet' }) },
+  { id: 'debt-free', group: 'Big wins', icon: 'win', name: 'Debt free', desc: 'Get every card to $0', progress: s => ({ cur: cards.length && s.owed <= 0.01 ? 100 : (s.peak > 0 ? s.paidDown / s.peak * 100 : 0), target: 100, text: `${Math.round(s.peak > 0 ? s.paidDown / s.peak * 100 : 0)}% paid off` }) },
+  // Good habits
+  { id: 'streak-3', group: 'Good habits', icon: 'habit', name: '3 on time', desc: "Handle a card's minimum 3 billing cycles in a row", progress: s => ({ cur: s.bestStreak, target: 3, text: `${Math.min(s.bestStreak, 3)} of 3 cycles` }) },
+  { id: 'streak-6', group: 'Good habits', icon: 'habit', name: '6 on time', desc: "Handle a card's minimum 6 billing cycles in a row", progress: s => ({ cur: s.bestStreak, target: 6, text: `${Math.min(s.bestStreak, 6)} of 6 cycles` }) },
+  { id: 'streak-12', group: 'Good habits', icon: 'habit', name: 'A year on time', desc: "Handle a card's minimum 12 billing cycles in a row", progress: s => ({ cur: s.bestStreak, target: 12, text: `${Math.min(s.bestStreak, 12)} of 12 cycles` }) },
+  { id: 'util-30', group: 'Good habits', icon: 'habit', name: 'Under 30%', desc: 'Get total credit used under 30%', progress: s => s.util == null ? { cur: 0, target: 1, text: 'Add credit limits to track this' } : { cur: s.util < 30 ? 1 : 30 / Math.max(s.util, 30), target: 1, text: `${Math.round(s.util)}% used now` } },
+  { id: 'util-10', group: 'Good habits', icon: 'habit', name: 'Under 10%', desc: 'Get total credit used under 10%', progress: s => s.util == null ? { cur: 0, target: 1, text: 'Add credit limits to track this' } : { cur: s.util < 10 ? 1 : 10 / Math.max(s.util, 10), target: 1, text: `${Math.round(s.util)}% used now` } },
+  { id: 'covered', group: 'Good habits', icon: 'habit', name: 'Covered', desc: "Have this cycle's minimums set aside before they're due", progress: s => s.minsDue > 0.005 ? atLeast(Math.max(0, s.setAside), s.minsDue) : { cur: 0, target: 1, text: 'Nothing due right now' } },
+  // Saving & rewards
+  { id: 'saver-500', group: 'Saving and rewards', icon: 'save', name: 'Saver', desc: 'Set aside $500 in total', progress: s => atLeast(s.savedAll, 500) },
+  { id: 'saver-1500', group: 'Saving and rewards', icon: 'save', name: 'Big saver', desc: 'Set aside $1,500 in total', progress: s => atLeast(s.savedAll, 1500) },
+  { id: 'rewards-50', group: 'Saving and rewards', icon: 'save', name: 'Rewards earner', desc: 'Earn $50 in cashback', progress: s => atLeast(s.cashback, 50) },
+  { id: 'rewards-250', group: 'Saving and rewards', icon: 'save', name: 'Rewards pro', desc: 'Earn $250 in cashback', progress: s => atLeast(s.cashback, 250) }
 ];
+ACHIEVEMENT_DEFS.forEach(d => { d.check = (st) => { const p = d.progress(st || achStats()); return p.cur >= p.target - 1e-9; }; });
 
 function checkAchievements() {
-  let newlyUnlocked = null;
+  const st = achStats();
+  const fresh = [];
   ACHIEVEMENT_DEFS.forEach(def => {
-    const already = achievements.find(a => a.id === def.id);
-    if (!already && def.check()) {
+    if (!achievements.find(a => a.id === def.id) && def.check(st)) {
       achievements.push({ id: def.id, date: new Date().toISOString() });
-      if (!newlyUnlocked) newlyUnlocked = def;
+      fresh.push(def);
     }
   });
-  if (newlyUnlocked) {
+  if (fresh.length) {
     saveData();
-    showReminder(`Achievement unlocked: ${newlyUnlocked.name}`, newlyUnlocked.desc);
+    const more = fresh.length > 1 ? ` (+${fresh.length - 1} more)` : '';
+    showReminder(`Achievement unlocked: ${fresh[0].name}${more}`, fresh[0].desc);
   }
 }
 
+let achAllOpen = false;
 function renderAchievements() {
   const list = document.getElementById('achievements-list');
   if (!list) return;
-  list.innerHTML = ACHIEVEMENT_DEFS.map(def => {
-    const unlocked = achievements.some(a => a.id === def.id);
-    return `
-      <div class="achievement-badge ${unlocked ? 'unlocked' : 'locked'}">
-        <div class="ab-icon" style="color:${unlocked ? 'var(--success)' : 'var(--text-muted)'}">${def.icon}</div>
-        <p class="ab-name">${def.name}</p>
-        <p class="ab-desc">${def.desc}</p>
+  const st = achStats();
+  const rows = ACHIEVEMENT_DEFS.map(def => {
+    const got = achievements.find(a => a.id === def.id);
+    const p = def.progress(st);
+    const pct = Math.max(0, Math.min(100, (p.cur / p.target) * 100));
+    return { def, got, p, pct };
+  });
+  const done = rows.filter(r => r.got).length;
+  const next = rows.filter(r => !r.got && r.pct > 0 && r.p.text !== 'Not yet').sort((a, b) => b.pct - a.pct).slice(0, 3);
+  const badge = (r, big) => `
+    <div class="ach ${r.got ? 'got' : ''}${big ? ' big' : ''}">
+      <span class="ach-ico" aria-hidden="true">${ACH_ICONS[r.def.icon]}</span>
+      <div class="ach-body">
+        <p class="ach-name">${r.def.name}</p>
+        <p class="ach-desc">${r.def.desc}</p>
+        ${r.got
+          ? `<p class="ach-meta got">Unlocked ${new Date(r.got.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>`
+          : `<div class="ach-bar"><i style="width:${r.pct.toFixed(1)}%"></i></div><p class="ach-meta">${r.p.text}</p>`}
       </div>
-    `;
-  }).join('');
+    </div>`;
+  const groups = [...new Set(ACHIEVEMENT_DEFS.map(d => d.group))];
+  list.innerHTML = `
+    <div class="ach-summary">
+      <p><b>${done}</b> of ${rows.length} unlocked</p>
+      <div class="ach-bar wide"><i style="width:${(done / rows.length * 100).toFixed(1)}%"></i></div>
+    </div>
+    ${next.length ? `<p class="sa-step">Next up</p><div class="ach-next">${next.map(r => badge(r, true)).join('')}</div>` : ''}
+    <details class="sub-detail ach-all"${achAllOpen ? ' open' : ''}>
+      <summary>See all ${rows.length} achievements</summary>
+      ${groups.map(g => `<p class="sa-step">${g}</p><div class="ach-grid">${rows.filter(r => r.def.group === g).map(r => badge(r)).join('')}</div>`).join('')}
+    </details>
+  `;
+  list.querySelector('.ach-all').addEventListener('toggle', (e) => { achAllOpen = e.target.open; });
 }
 
 function checkMilestones() {
-  const banner = document.getElementById('celebration-banner');
   const newlyPaidOff = cards.filter(c => c.balance <= 0.01 && !celebrated.includes(c.id));
-
-  if (newlyPaidOff.length === 0) {
-    return;
-  }
-
+  if (newlyPaidOff.length === 0) return;
   const card = newlyPaidOff[0];
   celebrated.push(card.id);
   saveData();
+  showPayoffCelebration(card);
+}
 
-  banner.innerHTML = `
-    <div class="celebration-box">
-      <div>
-        <p class="c-text">${esc(card.name)} is paid off</p>
-        <p class="c-sub">Nice work — one less card to worry about.</p>
-      </div>
-      <button class="celebration-dismiss" id="celebration-dismiss-btn">Nice!</button>
-    </div>
-  `;
-  document.getElementById('celebration-dismiss-btn').addEventListener('click', () => {
-    banner.innerHTML = '';
-  });
+function showPayoffCelebration(card) {
+  const old = document.getElementById('celebrate');
+  if (old) old.remove();
+  let cardPeak = 0;
+  try { const td = buildTrendData(); cardPeak = Math.max(0, ...(td.perCardSeries[card.id] || [0])); } catch (e) {}
+  const left = cards.filter(c => c.balance > 0.01);
+  const allDone = cards.length > 0 && left.length === 0;
+  const title = allDone ? "You're debt free" : `${esc(card.name)} is paid off`;
+  const sub = allDone
+    ? 'Every card is at $0. That took real work.'
+    : `${cardPeak > 0.01 ? `You paid off ${fmt(cardPeak)} on this card. ` : ''}${left.length} card${left.length === 1 ? '' : 's'} to go, ${fmt(totalOwed())} left in total.`;
+  const el = document.createElement('div');
+  el.id = 'celebrate';
+  el.className = 'celebrate';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-labelledby', 'cel-title');
+  el.style.setProperty('--cel', card.color || 'var(--success)');
+  el.innerHTML = `
+    <div class="cel-card">
+      <div class="cel-ring" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <p class="cel-kicker">${allDone ? 'Debt free' : 'Card paid off'}</p>
+      <h2 id="cel-title">${title}</h2>
+      <p class="cel-sub">${sub}</p>
+      <button type="button" class="primary" id="cel-close">${allDone ? 'Celebrate' : 'Keep going'}</button>
+    </div>`;
+  document.body.appendChild(el);
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 220); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  el.addEventListener('click', (e) => { if (e.target === el) close(); });
+  el.querySelector('#cel-close').addEventListener('click', close);
+  setTimeout(() => el.querySelector('#cel-close').focus(), 50);
+  if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30]); } catch (e) {} }
   launchConfetti();
 }
 
@@ -2819,9 +3477,9 @@ function renderTiles() {
     </div>`;
 
   box.innerHTML =
-    tile('Credit used', util == null ? '\u2014' : Math.round(util) + '%', util == null ? 'Add credit limits to see this' : `${fmt(usedTotal)} of ${fmt(limitTotal)}`, utilColor) +
+    tile('Credit used <i class="mood-dot" title="The page glow goes from red to green, based half on credit used and half on how much of what you owe is set aside"></i>', util == null ? '\u2014' : Math.round(util) + '%', util == null ? 'Add credit limits to see this' : `${fmt(usedTotal)} of ${fmt(limitTotal)}`, utilColor) +
     tile('Interest each month', fmt(interest), owed > 0.01 ? 'at your current rates' : 'nothing owed') +
-    tile('Set aside', fmt(setAside), owed > 0.01 ? `${fmt(Math.max(0, owed - setAside))} still to cover` : 'all paid off', setAside < 0 ? 'var(--danger)' : '');
+    tile('Set aside <i class="mood-dot" title="The page glow goes from red to green, based half on credit used and half on how much of what you owe is set aside"></i>', fmt(setAside), owed > 0.01 ? `Covers ${Math.max(0, Math.min(100, Math.round(setAside / owed * 100)))}% of what you owe` : 'all paid off', setAside < 0 ? 'var(--danger)' : '');
 }
 
 
@@ -2851,12 +3509,61 @@ function getSpendRange() {
   } catch (e) {}
   return 1;
 }
+document.getElementById('insights').addEventListener('toggle', (e) => {
+  if (e.target.classList && e.target.classList.contains('pace-more')) paceDetailsOpen = e.target.open;
+}, true);
 document.getElementById('insights').addEventListener('click', (e) => {
+  const pm = e.target.closest('button[data-pace]');
+  if (pm) {
+    try { localStorage.setItem('cc-tracker-pace-mode', pm.dataset.pace); } catch (err) {}
+    renderInsights();
+    return;
+  }
   const b = e.target.closest('button[data-spend]');
   if (!b) return;
   try { localStorage.setItem('cc-tracker-spend-range', b.dataset.spend); } catch (err) {}
   renderInsights();
 });
+
+let paceDetailsOpen = false;
+function getPaceMode() {
+  let v = null;
+  try { v = localStorage.getItem('cc-tracker-pace-mode'); } catch (e) {}
+  return v === 'cycle' ? 'cycle' : 'month';
+}
+
+// What you paid, charged and netted in recent periods, newest first.
+// Only periods that overlap your logged history are included.
+function buildPayPeriods(mode, live) {
+  if (!live.length) return [];
+  const first = new Date(Math.min(...live.map(h => new Date(h.date).getTime())));
+  const now = new Date();
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    let start, end, label, partial = false;
+    if (mode === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      end = new Date(now.getFullYear(), now.getMonth() - k + 1, 1);
+      label = start.toLocaleDateString('en-US', { month: 'short' });
+      partial = k === 0;
+    } else {
+      if (k === 3) break;
+      end = new Date(now); end.setDate(end.getDate() - 30 * k); end.setHours(23, 59, 59, 999);
+      start = new Date(end); start.setDate(start.getDate() - 30); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() + 1);
+      const f = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      label = `${f(start)}–${f(end)}`;
+    }
+    if (end <= first) break;
+    let paid = 0, charged = 0;
+    live.forEach(h => {
+      const d = new Date(h.date);
+      if (d < start || d >= end) return;
+      if (h.type === 'payment') paid += h.amount; else charged += h.amount;
+    });
+    out.push({ label, paid, charged, net: paid - charged, partial });
+  }
+  return out;
+}
 
 // ---- Insight cards: debt-free date, next best move, spending this month ----
 function renderInsights() {
@@ -2865,26 +3572,47 @@ function renderInsights() {
   const owed = totalOwed();
   const live = history.filter(h => !h.deleted);
 
-  // 1) Debt-free date, from the average monthly net payment (same math as the pace card)
-  const monthly = {};
-  live.forEach(h => {
-    const d = new Date(h.date);
-    const key = d.getFullYear() + '-' + d.getMonth();
-    monthly[key] = (monthly[key] || 0) + (h.type === 'payment' ? h.amount : -h.amount);
-  });
-  const mv = Object.values(monthly);
-  const avg = mv.length ? mv.reduce((a, b) => a + b, 0) / mv.length : 0;
+  // 1) Debt-free date, from what you actually paid down in recent periods.
+  //    "Month" = calendar months; "30 days" = rolling 30-day windows ending today.
+  //    The average uses complete periods only (this month so far is shown but not averaged).
+  const paceMode = getPaceMode();
+  const periods = buildPayPeriods(paceMode, live);
+  const complete = periods.filter(p => !p.partial);
+  const basis = complete.length ? complete : periods;
+  const avg = basis.length ? basis.reduce((a, p) => a + p.net, 0) / basis.length : 0;
+  const basisLabel = !basis.length ? '' : paceMode === 'month'
+    ? (basis.length === 1 ? basis[0].label : `${basis[basis.length - 1].label}–${basis[0].label}`)
+    : `last ${basis.length * 30} days`;
+  const unit = paceMode === 'month' ? 'a month' : 'every 30 days';
   let hero;
   if (owed <= 0.01) {
     hero = `<p class="i-big" style="color:var(--success)">Debt free</p><p class="i-sub">Every card is at zero.</p>`;
   } else if (avg > 0) {
-    const months = Math.ceil(owed / avg);
-    const t = new Date(); t.setMonth(t.getMonth() + months);
+    const steps = Math.ceil(owed / avg);
+    const t = new Date();
+    if (paceMode === 'month') t.setMonth(t.getMonth() + steps); else t.setDate(t.getDate() + steps * 30);
+    const monthsAway = paceMode === 'month' ? steps : Math.max(1, Math.round(steps * 30 / 30.44));
     hero = `<p class="i-big">${t.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
-            <p class="i-sub">About ${months} month${months === 1 ? '' : 's'} away at your average of ${fmt(avg)} a month.</p>`;
+            <p class="i-sub">About ${monthsAway} month${monthsAway === 1 ? '' : 's'} away at ${fmt(avg)} ${unit} (${basisLabel} average).</p>`;
   } else {
-    hero = `<p class="i-big">Not yet</p><p class="i-sub">Your balance isn't trending down yet. Log or sync a few payments to see a date.</p>`;
+    hero = `<p class="i-big">Not yet</p><p class="i-sub">Your balance hasn't gone down recently. Log or sync a few payments to see a date.</p>`;
   }
+  const pmBtn = (v, label) => `<button type="button" data-pace="${v}" class="${v === paceMode ? 'active' : ''}">${label}</button>`;
+  if (periods.length) {
+    hero += `<details class="pace-more"${paceDetailsOpen ? ' open' : ''}>
+      <summary>See ${paceMode === 'month' ? 'month by month' : 'each 30 days'}</summary>
+      <div class="range-switch small pace-switch" role="group" aria-label="Group by">${pmBtn('month', 'Month')}${pmBtn('cycle', '30 days')}</div>
+      <div class="pace-rows">` + periods.map(p => {
+      const down = p.net >= 0;
+      return `
+        <div class="pace-row${p.partial ? ' partial' : ''}" title="Paid ${fmt(p.paid)}, charged ${fmt(p.charged)}">
+          <span class="pr-l">${p.label}${p.partial ? ' <em>so far</em>' : ''}</span>
+          <span class="pr-sub">${fmt(p.paid)} paid, ${fmt(p.charged)} charged</span>
+          <span class="pr-net ${down ? 'down' : 'up'}">${down ? '−' : '+'}${fmt(Math.abs(p.net))}</span>
+        </div>`;
+    }).join('') + `</div></details>`;
+  }
+  const debtFreeHead = `<p class="i-label">Debt-free date</p>`;
 
   // 2) Next best move
   const owing = cards.filter(c => c.balance > 0.005);
@@ -2935,7 +3663,7 @@ function renderInsights() {
     <p class="i-sub" style="font-size:13px">Estimated from balance increases the app has logged. Charges you paid off before a sync won't show.</p>`;
 
   box.innerHTML =
-    `<div class="insight"><p class="i-label">Debt-free date</p>${hero}</div>` +
+    `<div class="insight">${debtFreeHead}${hero}</div>` +
     `<div class="insight"><p class="i-label">Next best move</p>${move}</div>` +
     `<div class="insight">${spending}</div>`;
 }
@@ -2954,13 +3682,7 @@ function render() {
       toggleBtn.textContent = manualLogFormForcedOpen ? 'Hide manual entry form' : 'Log a payment or charge';
     }
   }
-  const net = monthNet();
-  const netEl = document.getElementById('month-net');
-  const flat = Math.abs(net) < 0.005;
-  netEl.className = 'delta-pill ' + (flat ? 'flat' : net < 0 ? 'good' : 'bad');
-  netEl.innerHTML = (flat ? '' : `<span aria-hidden="true">${net < 0 ? '\u2193' : '\u2191'}</span> `)
-    + fmt(Math.abs(net)) + ' ' + (flat ? 'change this month' : net < 0 ? 'down this month' : 'up this month');
-  netEl.title = 'Change in what you owe since the 1st of this month';
+  renderDeltaPill();
   renderCards();
   renderPace();
   renderMonthlyCosts();
@@ -3407,12 +4129,12 @@ function renderPlanner(amount) {
     let fundingLine = '';
     if (hasReserves) {
       const grouped = fundingByBank(p.funding);
-      const parts = grouped.map(f => `${esc(f.bank)} ${fmt(f.amount)}`);
+      const parts = grouped.map(f => f.bank === 'Not tied to an account' ? `${fmt(f.amount)} from set-aside cash` : `${fmt(f.amount)} from ${esc(f.bank)}`);
       if (p.unfunded > 0.005) {
         parts.push(`<span style="color:var(--warning);font-weight:600">${fmt(p.unfunded)} not yet set aside</span>`);
       }
       if (parts.length) {
-        fundingLine = `<div class="pnote" style="margin-top:3px;color:var(--text-muted)">💰 ${parts.join(' + ')}</div>`;
+        fundingLine = `<div class="pnote" style="margin-top:3px;color:var(--text-muted)">${parts.join(' + ')}</div>`;
       }
     }
     const aprLabel = p.promoUntil
@@ -3462,10 +4184,10 @@ function renderPlanner(amount) {
       .sort((a, b) => display[a].localeCompare(display[b]))
       .map(key => {
         const remaining = Math.round(((totals[key] || 0) - (consumed[key] || 0)) * 100) / 100;
-        return `${esc(display[key])} ${fmt(remaining)}`;
+        return display[key] === 'Not tied to an account' ? fmt(remaining) : `${fmt(remaining)} in ${esc(display[key])}`;
       });
     if (leftoverParts.length) {
-      html += `<p class="pnote" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">After this plan, set-aside cash remaining: ${leftoverParts.join(' &nbsp;·&nbsp; ')}</p>`;
+      html += `<p class="pnote" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">Set-aside cash left after this: ${leftoverParts.join(', ')}</p>`;
     }
   }
   resultBox.innerHTML = html;
@@ -3773,7 +4495,7 @@ function renderTarget(targetDateStr) {
   });
 
   const anyUnpaid = detailed.order.some(c => detailed.balances[c.id] > 0.01);
-  const strategyBanner = `<p style="font-size:16px;color:var(--accent-bright);font-weight:600;margin:0 0 12px">Using: ${strategyLabel}</p>`;
+  const strategyBanner = ''; // the payoff order is chosen at the top of the Planner now
 
   if (result.reason === 'minimums-enough') {
     resultBox.innerHTML = `
@@ -3895,23 +4617,23 @@ function renderWhatIf() {
   }
   const strategy = document.getElementById('strategy-select').value;
   const sim = simulateAvalanche(val, strategy);
+  const minOnly = simulateMinimumOnly();
   const target = new Date();
   target.setMonth(target.getMonth() + sim.months);
+  const saved = Math.max(0, minOnly.totalInterest - sim.totalInterest);
+  const sooner = Math.max(0, minOnly.months - sim.months);
+  const mo = n => n + ' month' + (n === 1 ? '' : 's');
   resultBox.innerHTML = `
-    <div class="savings-stats">
-      <div class="savings-stat savings-highlight">
-        <p class="s-label">Debt-free in</p>
-        <p class="s-value">${sim.months} month${sim.months === 1 ? '' : 's'}</p>
-      </div>
-      <div class="savings-stat">
-        <p class="s-label">Around</p>
-        <p class="s-value" style="font-size:17px">${target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-      </div>
-      <div class="savings-stat">
-        <p class="s-label">Total interest paid</p>
-        <p class="s-value">${fmt(sim.totalInterest)}</p>
-      </div>
+    <div class="wi-hero">
+      <p class="wi-big">Debt-free by ${target.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+      <p class="wi-sub">${mo(sim.months)} from now at ${fmt(val)} a month</p>
     </div>
+    <div class="wi-stats">
+      <div class="wi-stat"><p class="s-label">Interest you'd pay</p><p class="s-value">${fmt(sim.totalInterest)}</p></div>
+      <div class="wi-stat good"><p class="s-label">Saved vs. minimums only</p><p class="s-value">${fmt(saved)}</p></div>
+      <div class="wi-stat good"><p class="s-label">Done sooner by</p><p class="s-value">${mo(sooner)}</p></div>
+    </div>
+    <p class="wi-note">Paying only the minimums would take ${mo(minOnly.months)} and cost ${fmt(minOnly.totalInterest)} in interest.</p>
   `;
 }
 
@@ -3924,6 +4646,111 @@ function updateWhatIfSliderRange() {
   document.getElementById('whatif-max').textContent = fmt(suggestedMax) + '/mo';
   if (parseFloat(slider.value) > suggestedMax) slider.value = suggestedMax;
 }
+
+// Strategy picker: big buttons that drive the (hidden) strategy select.
+function syncStrategyPick() {
+  const v = document.getElementById('strategy-select').value;
+  document.querySelectorAll('#strategy-pick [data-strategy]').forEach(b => {
+    const on = b.dataset.strategy === v;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+document.getElementById('strategy-pick').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-strategy]');
+  if (!b) return;
+  const sel = document.getElementById('strategy-select');
+  if (sel.value === b.dataset.strategy) return;
+  sel.value = b.dataset.strategy;
+  sel.dispatchEvent(new Event('change'));
+});
+document.getElementById('strategy-select').addEventListener('change', syncStrategyPick);
+syncStrategyPick();
+
+// Set-aside activity: segmented switch drives the (hidden) grouping select.
+function syncReserveViewSwitch() {
+  const v = document.getElementById('reserve-view-mode').value;
+  document.querySelectorAll('#reserve-view-switch [data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === v));
+}
+document.getElementById('reserve-view-switch').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mode]');
+  if (!b) return;
+  const sel = document.getElementById('reserve-view-mode');
+  sel.value = b.dataset.mode;
+  sel.dispatchEvent(new Event('change'));
+  syncReserveViewSwitch();
+});
+syncReserveViewSwitch();
+
+// Long lists are split into pages so they never stretch the page:
+// 5 rows at a time with Newer / Older buttons, and only the latest
+// `maxRows` entries are shown at all (older ones stay saved, just not listed).
+const listPageState = {};
+function pageList(list, { rowSel = '.txn-row', perPage = 5, maxRows = 25, prev = 'Newer', next = 'Older' } = {}) {
+  if (!list) return;
+  list.querySelectorAll(':scope > .list-pager').forEach(b => b.remove());
+  const all = Array.from(list.querySelectorAll(rowSel));
+  const rows = all.slice(0, maxRows);
+  all.slice(maxRows).forEach(r => { r.hidden = true; });
+  const pages = Math.max(1, Math.ceil(rows.length / perPage));
+  const page = Math.min(Math.max(listPageState[list.id] || 0, 0), pages - 1);
+  listPageState[list.id] = page;
+  rows.forEach((r, i) => { r.hidden = !(i >= page * perPage && i < (page + 1) * perPage); });
+  all.forEach(r => r.classList.remove('first-visible'));
+  const firstShown = rows.find(r => !r.hidden);
+  if (firstShown) firstShown.classList.add('first-visible');
+  list.querySelectorAll('.hist-group').forEach(g => {
+    g.hidden = !Array.from(g.querySelectorAll(rowSel)).some(r => !r.hidden);
+  });
+  if (pages <= 1) return;
+  const from = page * perPage + 1;
+  const to = Math.min(rows.length, (page + 1) * perPage);
+  const pager = document.createElement('div');
+  pager.className = 'list-pager';
+  pager.innerHTML = `
+    <button type="button" data-dir="-1" ${page === 0 ? 'disabled' : ''} aria-label="${prev}">‹ ${prev}</button>
+    <span>${from}–${to} of ${rows.length}</span>
+    <button type="button" data-dir="1" ${page >= pages - 1 ? 'disabled' : ''} aria-label="${next}">${next} ›</button>`;
+  pager.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-dir]');
+    if (!btn || btn.disabled) return;
+    listPageState[list.id] = page + parseInt(btn.dataset.dir, 10);
+    pageList(list, { rowSel, perPage, maxRows, prev, next });
+  });
+  list.appendChild(pager);
+}
+const clampTxnList = (list) => pageList(list);
+{
+  const baseRenderHistory = renderHistory;
+  renderHistory = function () { baseRenderHistory(); clampTxnList(document.getElementById('history-list')); };
+  const baseRenderReserveHistory = renderReserveHistory;
+  renderReserveHistory = function () {
+    baseRenderReserveHistory();
+    clampTxnList(document.getElementById('reserve-history-list'));
+    pageList(document.getElementById('reserve-per-bank-list'), { rowSel: '.sa-item', perPage: 4, maxRows: 100, prev: 'Prev', next: 'Next' });
+    pageList(document.getElementById('reserve-per-card-list'), { rowSel: '.sa-item', perPage: 4, maxRows: 100, prev: 'Prev', next: 'Next' });
+  };
+  const baseRenderRewards = renderRewards;
+  renderRewards = function () {
+    const r = baseRenderRewards.apply(this, arguments);
+    clampTxnList(document.getElementById('rewards-history-list'));
+    pageList(document.getElementById('rewards-per-card-list'), { rowSel: '.sa-item', perPage: 4, maxRows: 100, prev: 'Prev', next: 'Next' });
+    return r;
+  };
+}
+
+renderNewCardSwatches();
+document.getElementById('new-card-swatches').addEventListener('click', (e) => {
+  const sw = e.target.closest('.swatch');
+  if (!sw) return;
+  document.getElementById('new-card-color').value = sw.dataset.color;
+  renderNewCardSwatches();
+});
+document.getElementById('new-card-swatches').addEventListener('change', (e) => {
+  if (!e.target.matches('.swatch-custom input')) return;
+  document.getElementById('new-card-color').value = e.target.value;
+  renderNewCardSwatches();
+});
 
 document.getElementById('whatif-slider').addEventListener('input', renderWhatIf);
 document.getElementById('strategy-select').addEventListener('change', renderWhatIf);
@@ -4050,68 +4877,72 @@ function spendFromReserveBuckets(funding, note) {
 
 let affordDismissedSignature = null;
 
+// Page glow: red → amber → green, scored half on credit used and half on
+// how much of what you owe is already set aside.
+function getMoodScore() {
+  const owed = totalOwed();
+  if (owed <= 0.01) return { score: 1, util: 0, cover: 1 };
+  const setAside = reserves.filter(r => !r.deleted).reduce((s, r) => s + r.amount, 0);
+  const cover = Math.max(0, Math.min(1, setAside / owed));
+  const withLimit = cards.filter(c => c.limit > 0);
+  const limitTotal = withLimit.reduce((s, c) => s + c.limit, 0);
+  const util = limitTotal > 0 ? withLimit.reduce((s, c) => s + c.balance, 0) / limitTotal * 100 : null;
+  // 10% or less = perfect, 30% = okay, 50% or more = worst.
+  const utilScore = util == null ? null
+    : util <= 10 ? 1
+    : util <= 30 ? 1 - (util - 10) / 20 * 0.4
+    : util <= 50 ? 0.6 - (util - 30) / 20 * 0.6
+    : 0;
+  const score = utilScore == null ? cover : 0.5 * utilScore + 0.5 * cover;
+  return { score, util, cover };
+}
+function updateMood() {
+  const { score } = getMoodScore();
+  const hue = Math.round(Math.pow(score, 1.5) * 140); // halfway reads amber, all good reads green
+  document.documentElement.style.setProperty('--mood', `hsl(${hue} 78% 52%)`);
+}
+
 function renderAffordability() {
+  updateMood();
   const box = document.getElementById('affordability-box');
+  if (!box) return;
   const total = reserves.filter(r => !r.deleted).reduce((s, r) => s + r.amount, 0);
   const active = cards.filter(c => c.balance > 0.005);
-
-  if (active.length === 0) {
-    box.innerHTML = '';
-    return;
-  }
-
   const now = new Date();
   const uncovered = active.filter(c => c.lastMinPaidCycle !== getCardCycleKey(c, now));
-
-  if (uncovered.length === 0) {
-    box.innerHTML = `
-      <div class="afford-box ok">
-        <p class="a-title">Every card's minimum is handled for this cycle</p>
-        <p class="a-sub">Each card has been marked paid or dismissed for this month, based on the due-date actions on your cards above.</p>
-      </div>
-    `;
-    return;
-  }
-
   const totalMins = uncovered.reduce((s, c) => s + (c.min || 0), 0);
-  const diff = total - totalMins;
+  const n = uncovered.length;
+  const cardsWord = n + ' card' + (n === 1 ? '' : 's');
 
-  if (diff >= 0) {
-    box.innerHTML = `
-      <div class="afford-box ok">
-        <p class="a-title">You have enough set aside to cover what's left this cycle</p>
-        <p class="a-sub">${fmt(total)} set aside vs ${fmt(totalMins)} still needed for ${uncovered.length} card${uncovered.length === 1 ? '' : 's'} — ${fmt(diff)} extra to put toward paying down debt faster.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const signature = `${uncovered.map(c => c.id).sort().join(',')}|${totalMins.toFixed(2)}|${total.toFixed(2)}`;
-
-  if (affordDismissedSignature === signature) {
-    box.innerHTML = `
-      <div class="afford-box short">
-        <p class="a-title">Shortfall dismissed for now</p>
-        <p class="a-sub">Still short ${fmt(Math.abs(diff))} for ${uncovered.length} card${uncovered.length === 1 ? '' : 's'}, but you've dismissed this reminder. It'll reappear if the numbers change.</p>
-      </div>
-    `;
-    return;
+  let state = 'ok', status = '', sub = '', pct = 100, showBar = true;
+  if (active.length === 0) {
+    status = 'Nothing due'; sub = 'No card has a balance right now.'; showBar = false;
+  } else if (n === 0 || totalMins <= 0.005) {
+    status = 'All handled'; sub = "Every card's minimum is handled for this cycle.";
+  } else if (total >= totalMins) {
+    pct = 100;
+    status = 'Covered';
+    sub = `Covers the ${fmt(totalMins)} still due on ${cardsWord}` + (total - totalMins > 0.005 ? `, with ${fmt(total - totalMins)} left for extra payments.` : '.');
+  } else {
+    state = 'short';
+    pct = Math.max(0, Math.min(100, (total / totalMins) * 100));
+    status = `${fmt(totalMins - total)} short`;
+    sub = `${fmt(totalMins)} still due on ${cardsWord}. Tap "Pay minimum" or "Already paid" on a card once it's handled.`;
   }
 
   box.innerHTML = `
-    <div class="afford-box short">
-      <p class="a-title">Not quite enough set aside yet</p>
-      <p class="a-sub">${fmt(total)} set aside vs ${fmt(totalMins)} still needed for ${uncovered.length} card${uncovered.length === 1 ? '' : 's'} — you're short ${fmt(Math.abs(diff))}. Use "Pay minimum" or "Already paid minimum" on the card above once it's handled, and this updates automatically.</p>
-      <button class="celebration-dismiss" id="afford-dismiss-btn" style="margin-top:10px;border-color:var(--danger);color:var(--danger)">Dismiss for now</button>
+    <div class="sa-meter ${state}">
+      <div class="sa-top">
+        <div>
+          <p class="sa-label">Total set aside</p>
+          <p class="sa-total" style="${total < -0.005 ? 'color:var(--danger)' : ''}">${fmt(total)}</p>
+        </div>
+        <p class="sa-status">${status}</p>
+      </div>
+      ${showBar ? `<div class="sa-track" role="img" aria-label="${Math.round(pct)}% of what's due is set aside"><div class="sa-fill" style="width:${pct}%"></div></div>` : ''}
+      <p class="sa-sub">${sub}</p>
     </div>
   `;
-  const dismissBtn = document.getElementById('afford-dismiss-btn');
-  if (dismissBtn) {
-    dismissBtn.addEventListener('click', () => {
-      affordDismissedSignature = signature;
-      renderAffordability();
-    });
-  }
 }
 
 let rewardsCashbackChart = null;
@@ -4147,7 +4978,7 @@ function renderRewards() {
   const perCardBox = document.getElementById('rewards-per-card-list');
   const cardIds = Object.keys(byCard);
   if (cardIds.length === 0) {
-    perCardBox.innerHTML = '';
+    perCardBox.innerHTML = '<p class="sa-empty">Nothing logged yet.</p>';
   } else {
     perCardBox.innerHTML = cardIds.map(id => {
       const card = cards.find(c => c.id === id);
@@ -4156,9 +4987,9 @@ function renderRewards() {
       if (byCard[id].cashback !== 0) parts.push(fmt(byCard[id].cashback) + ' cashback');
       if (byCard[id].points !== 0) parts.push(Math.round(byCard[id].points).toLocaleString('en-US') + ' points');
       return `
-        <div class="reward-row" style="--card-color:${card.color}">
-          <span class="rw-name">${esc(card.name)}</span>
-          <span class="rw-amt" style="color:${card.color}">${parts.join(' · ') || '$0.00'}</span>
+        <div class="sa-item">
+          <span class="sa-name"><i style="background:${card.color}"></i>${esc(card.name)}</span>
+          <span class="sa-amt">${parts.join(', ') || '$0.00'}</span>
         </div>
       `;
     }).join('');
@@ -4172,24 +5003,22 @@ function renderRewards() {
   const historyList = document.getElementById('rewards-history-list');
   const sorted = [...rewards].filter(r => !r.deleted && !r.archived).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
   if (sorted.length === 0) {
-    historyList.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No rewards logged yet.</p>';
+    historyList.innerHTML = '<p class="sa-empty">No rewards logged yet.</p>';
   } else {
     historyList.innerHTML = sorted.map(r => {
       const card = cards.find(c => c.id === r.cardId);
       const isNegative = r.amount < 0;
       const absAmt = Math.abs(r.amount);
       const amtText = r.type === 'cashback' ? fmt(absAmt) : Math.round(absAmt).toLocaleString('en-US') + ' pts';
-      const sign = isNegative ? '-' : '+';
-      const cls = isNegative ? 'pos' : 'neg';
-      return `
-        <div class="hist-row">
-          <div class="hist-row-main">${esc(card ? card.name : 'Unknown card')}${r.note ? ' — ' + esc(r.note) : ''}</div>
-          <div class="hist-row-right">
-            <div class="hist-amt ${cls}">${sign}${amtText}</div>
-            <button class="hist-delete-btn" data-reward-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your totals">&times;</button>
-          </div>
-        </div>
-      `;
+      return `<div class="txn-row">${txnRowHtml({
+        dir: isNegative ? 'out' : 'in',
+        title: esc(r.note || (isNegative ? 'Redeemed' : 'Earned')),
+        meta: txnDate(r.date),
+        amount: (isNegative ? '\u2212' : '+') + amtText,
+        amountClass: isNegative ? '' : 'good',
+        cardId: card ? card.id : null,
+        deleteAttr: `data-reward-id="${r.id}"`
+      })}</div>`;
     }).join('');
     historyList.querySelectorAll('.hist-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -4392,8 +5221,8 @@ function renderReserves() {
   const cardSelect = document.getElementById('reserve-card-select');
   if (cardSelect) {
     const currentVal = cardSelect.value;
-    cardSelect.innerHTML = '<option value="">General — not tied to a card</option>' +
-      cards.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    cardSelect.innerHTML = '<option value="">For any card</option>' +
+      cards.map(c => `<option value="${c.id}">For ${esc(c.name)}</option>`).join('');
     if (cards.some(c => c.id === currentVal)) cardSelect.value = currentVal;
   }
 
@@ -4408,23 +5237,18 @@ function renderReserves() {
         generalTotal += r.amount;
       }
     });
-    const cardRows = cards.map(c => {
-      const amt = byCard[c.id] || 0;
-      const hasMoney = Math.abs(amt) > 0.005;
-      return `
-        <div class="reward-row" style="${hasMoney ? '' : 'opacity:0.5'}">
-          <span class="rw-name" style="color:${c.color}">${esc(c.name)}</span>
-          <span class="rw-amt" style="color:${!hasMoney ? 'var(--text-muted)' : amt < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(amt)}</span>
-        </div>
-      `;
-    }).join('');
-    const generalRow = `
-        <div class="reward-row" style="${Math.abs(generalTotal) > 0.005 ? '' : 'opacity:0.5'}">
-          <span class="rw-name" style="color:var(--text-muted)">General (not tied to a card)</span>
-          <span class="rw-amt" style="color:${Math.abs(generalTotal) <= 0.005 ? 'var(--text-muted)' : generalTotal < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(generalTotal)}</span>
-        </div>
-      `;
-    perCardBox.innerHTML = cardRows + generalRow;
+    const amtColor = amt => amt < -0.005 ? 'var(--danger)' : 'var(--text-primary)';
+    const cardRows = cards.filter(c => Math.abs(byCard[c.id] || 0) > 0.005).map(c => `
+        <div class="sa-item">
+          <span class="sa-name"><i style="background:${c.color}"></i>${esc(c.name)}</span>
+          <span class="sa-amt" style="color:${amtColor(byCard[c.id])}">${fmt(byCard[c.id])}</span>
+        </div>`).join('');
+    const generalRow = Math.abs(generalTotal) > 0.005 ? `
+        <div class="sa-item">
+          <span class="sa-name"><i style="background:var(--text-muted)"></i>Any card</span>
+          <span class="sa-amt" style="color:${amtColor(generalTotal)}">${fmt(generalTotal)}</span>
+        </div>` : '';
+    perCardBox.innerHTML = (cardRows + generalRow) || '<p class="sa-empty">Nothing set aside yet.</p>';
   }
 
   const perBankBox = document.getElementById('reserve-per-bank-list');
@@ -4442,26 +5266,36 @@ function renderReserves() {
       byBank[key] = (byBank[key] || 0) + r.amount;
     });
     const bankKeys = Object.keys(byBank).sort((a, b) => bankDisplay[a].localeCompare(bankDisplay[b]));
-    if (bankKeys.length > 0) {
-      perBankLabel.style.display = 'block';
-      perBankBox.innerHTML = bankKeys.map(key => {
-        const amt = byBank[key];
-        const hasMoney = Math.abs(amt) > 0.005;
-        return `
-          <div class="reward-row" style="${hasMoney ? '' : 'opacity:0.5'}">
-            <span class="rw-name">${esc(bankDisplay[key])}</span>
-            <span class="rw-amt" style="color:${!hasMoney ? 'var(--text-muted)' : amt < 0 ? 'var(--danger)' : 'var(--success)'}">${fmt(amt)}</span>
-          </div>
-        `;
-      }).join('');
-    } else {
-      perBankLabel.style.display = 'none';
-      perBankBox.innerHTML = '';
-    }
+    const noBank = nonDeletedReserves.filter(r => !(r.bank || '').trim()).reduce((sum, r) => sum + r.amount, 0);
+    const shownKeys = bankKeys.filter(k => Math.abs(byBank[k]) > 0.005).sort((a, b) => byBank[b] - byBank[a]);
+    const bankRows = shownKeys.map(key => `
+        <div class="sa-item">
+          <span class="sa-name">${esc(bankDisplay[key])}</span>
+          <span class="sa-amt" style="color:${byBank[key] < -0.005 ? 'var(--danger)' : 'var(--text-primary)'}">${fmt(byBank[key])}</span>
+        </div>`).join('') + (Math.abs(noBank) > 0.005 ? `
+        <div class="sa-item">
+          <span class="sa-name" style="color:var(--text-muted)">No bank chosen</span>
+          <span class="sa-amt">${fmt(noBank)}</span>
+        </div>` : '');
+    perBankBox.innerHTML = bankRows || '<p class="sa-empty">Nothing set aside yet.</p>';
+    if (perBankLabel) perBankLabel.style.display = '';
 
     const bankDatalist = document.getElementById('reserve-bank-options');
     if (bankDatalist) {
       bankDatalist.innerHTML = bankKeys.map(key => `<option value="${esc(bankDisplay[key])}"></option>`).join('');
+    }
+    // Banks you've used before become one-tap choices.
+    const chips = document.getElementById('reserve-bank-chips');
+    if (chips) {
+      const chipKeys = [...bankKeys].sort((a, b) => Math.abs(byBank[b]) - Math.abs(byBank[a]));
+      const MAX_CHIPS = 5;
+      const showAllChips = chips.dataset.all === 'true';
+      chips.innerHTML = chipKeys.map((key, i) => `<button type="button" class="bank-chip" data-bank="${esc(bankDisplay[key])}"${!showAllChips && i >= MAX_CHIPS ? ' hidden' : ''}>${esc(bankDisplay[key])}<span>${fmt(byBank[key])}</span></button>`).join('')
+        + (chipKeys.length > MAX_CHIPS ? `<button type="button" class="bank-chip-more">${showAllChips ? 'Fewer' : '+' + (chipKeys.length - MAX_CHIPS) + ' more'}</button>` : '');
+      chips.style.display = bankKeys.length ? '' : 'none';
+      const bankInput = document.getElementById('reserve-bank');
+      if (bankInput) bankInput.placeholder = bankKeys.length ? 'Or type another bank' : 'Bank or account, e.g. Chase checking';
+      syncBankChips();
     }
   }
   renderAffordability();
@@ -4493,6 +5327,14 @@ function renderReserves() {
   const points = totalPoints; // used below for color-by-sign on the legend/final value
 
   const ctx = document.getElementById('reserve-chart');
+  // The set-aside line chart was removed; the By bank / By card lists and the
+  // activity list below show the same information more clearly.
+  const showReserveChart = false;
+  const chartWrap = document.getElementById('reserve-chart-wrap');
+  const chartLegend = document.getElementById('reserve-chart-legend');
+  if (chartWrap) chartWrap.style.display = showReserveChart ? '' : 'none';
+  if (chartLegend) chartLegend.style.display = showReserveChart ? 'flex' : 'none';
+  if (!showReserveChart) { if (reserveChart) { reserveChart.destroy(); reserveChart = null; } renderReserveHistory(); return; }
   if (!window.Chart) { renderReserveHistory(); return; }
   if (reserveChart) reserveChart.destroy();
   const finalValue = points[points.length - 1];
@@ -4516,7 +5358,7 @@ function renderReserves() {
 
   if (generalHasActivity) {
     datasets.push({
-      label: 'General',
+      label: 'Any card',
       data: generalPoints,
       borderColor: '#4ADE80',
       backgroundColor: 'transparent',
@@ -4670,7 +5512,7 @@ function renderReserveHistory() {
   list.innerHTML = '';
 
   if (reserves.length === 0) {
-    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No set-aside activity yet.</p>';
+    list.innerHTML = '<p class="sa-empty">No set-aside activity yet.</p>';
     return;
   }
 
@@ -4678,7 +5520,7 @@ function renderReserveHistory() {
   const mode = modeSelect ? modeSelect.value : 'month';
   const visible = combineByBatch(reserves.filter(r => !r.deleted && !r.archived));
   if (visible.length === 0) {
-    list.innerHTML = '<p style="font-size:16px;color:var(--text-muted)">No set-aside activity yet.</p>';
+    list.innerHTML = '<p class="sa-empty">No set-aside activity yet.</p>';
     return;
   }
   const sorted = [...visible].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -4709,25 +5551,28 @@ function renderReserveHistory() {
   }
 
   function rowHtml(r) {
-    const isPositive = r.amount >= 0;
-    const sign = isPositive ? '+' : '-';
-    const cls = isPositive ? 'neg' : 'pos';
-    const noteText = r.note || (isPositive ? 'Set aside' : 'Spent on payment');
-    const taggedCard = r.cardId ? cards.find(c => c.id === r.cardId) : null;
-    const cardTag = taggedCard ? `<span style="color:${taggedCard.color};font-weight:600">${esc(taggedCard.name)}</span> — ` : '';
-    let bankTag = '';
+    const pos = r.amount >= 0;
+    let bankText = '';
     if (r.bankBreakdown && r.bankBreakdown.length) {
-      bankTag = `<span style="color:var(--text-muted);font-size:14px"> (${r.bankBreakdown.map(b => `${esc(b.bank)} ${fmt(Math.abs(b.amount))}`).join(' + ')})</span>`;
+      bankText = r.bankBreakdown.map(b => `${esc(b.bank)} ${fmt(Math.abs(b.amount))}`).join(' + ');
     } else if (r.bank) {
-      bankTag = `<span style="color:var(--text-muted);font-size:14px"> (${esc(r.bank)})</span>`;
+      bankText = esc(r.bank);
     }
-    return `<div class="hist-row-main">${cardTag}${esc(noteText)}${bankTag}</div><div class="hist-row-right"><div class="hist-amt ${cls}">${sign}${fmt(Math.abs(r.amount))}</div><button class="hist-delete-btn" data-reserve-id="${r.id}" aria-label="Remove this entry" title="Delete this entry — also removes its amount from your total">&times;</button></div>`;
+    return txnRowHtml({
+      dir: pos ? 'in' : 'out',
+      title: esc(r.note || (pos ? 'Set aside' : 'Used for a payment')),
+      meta: [txnDate(r.date), bankText].filter(Boolean).join(' \u00B7 '),
+      amount: (pos ? '+' : '\u2212') + fmt(Math.abs(r.amount)),
+      amountClass: pos ? 'good' : '',
+      cardId: r.cardId,
+      deleteAttr: `data-reserve-id="${r.id}"`
+    });
   }
 
   if (mode === 'all') {
     sorted.slice(0, 20).forEach(r => {
       const row = document.createElement('div');
-      row.className = 'hist-row';
+      row.className = 'txn-row';
       row.innerHTML = rowHtml(r);
       list.appendChild(row);
     });
@@ -4750,16 +5595,15 @@ function renderReserveHistory() {
     const subtotal = entries.reduce((s, r) => s + r.amount, 0);
     const groupDiv = document.createElement('div');
     groupDiv.className = 'hist-group';
-    const headerColor = subtotal < 0 ? 'var(--danger)' : 'var(--success)';
     groupDiv.innerHTML = `
       <div class="hist-group-header">
         <span class="hg-label">${getGroupLabel(key, mode)}</span>
-        <span class="hg-sub" style="color:${headerColor}">${subtotal >= 0 ? '+' : '-'}${fmt(Math.abs(subtotal))}</span>
+        <span class="hg-sub">${subtotal >= 0 ? '+' : '\u2212'}${fmt(Math.abs(subtotal))}</span>
       </div>
     `;
     entries.forEach(r => {
       const row = document.createElement('div');
-      row.className = 'hist-row';
+      row.className = 'txn-row';
       row.innerHTML = rowHtml(r);
       groupDiv.appendChild(row);
     });
@@ -4779,6 +5623,32 @@ document.getElementById('reserve-view-mode').addEventListener('change', () => {
   renderReserveHistory();
 });
 
+function syncBankChips() {
+  const input = document.getElementById('reserve-bank');
+  const val = input ? normalizeBankKey((input.value || '').trim().replace(/\s+/g, ' ')) : '';
+  document.querySelectorAll('#reserve-bank-chips .bank-chip').forEach(ch => {
+    const on = !!val && normalizeBankKey(ch.dataset.bank) === val;
+    ch.classList.toggle('active', on);
+    ch.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+document.getElementById('reserve-bank-chips').addEventListener('click', (e) => {
+  const more = e.target.closest('.bank-chip-more');
+  if (more) {
+    const box = document.getElementById('reserve-bank-chips');
+    box.dataset.all = box.dataset.all === 'true' ? 'false' : 'true';
+    renderReserves();
+    return;
+  }
+  const ch = e.target.closest('.bank-chip');
+  if (!ch) return;
+  const input = document.getElementById('reserve-bank');
+  input.value = ch.classList.contains('active') ? '' : ch.dataset.bank;
+  syncBankChips();
+  if (input.value) document.getElementById('reserve-amount').focus();
+});
+document.getElementById('reserve-bank').addEventListener('input', syncBankChips);
+
 document.getElementById('reserve-btn').addEventListener('click', () => {
   const input = document.getElementById('reserve-amount');
   const val = parseFloat(input.value);
@@ -4791,7 +5661,6 @@ document.getElementById('reserve-btn').addEventListener('click', () => {
   reserves.push({ id: Date.now() + Math.random(), amount: val, date: new Date().toISOString(), note, cardId, bank });
   input.value = '';
   noteInput.value = '';
-  bankInput.value = '';
   saveData();
   renderReserves();
 });
@@ -4808,7 +5677,6 @@ document.getElementById('reserve-remove-btn').addEventListener('click', () => {
   reserves.push({ id: Date.now() + Math.random(), amount: -val, date: new Date().toISOString(), note, cardId, bank });
   input.value = '';
   noteInput.value = '';
-  bankInput.value = '';
   saveData();
   renderReserves();
 });
@@ -4879,6 +5747,7 @@ document.getElementById('add-card-btn').addEventListener('click', () => {
   document.getElementById('new-card-limit').value = '';
   document.getElementById('new-card-due').value = '';
   document.getElementById('new-card-color').value = '#4FA3FF';
+  renderNewCardSwatches();
   document.querySelectorAll('#new-card-categories input[type=checkbox]').forEach(el => { el.checked = false; });
   document.getElementById('new-card-other-text').value = '';
   document.getElementById('new-card-other-text').style.display = 'none';
@@ -6085,7 +6954,13 @@ document.getElementById('tab-bar').addEventListener('click', (e) => {
 
 function applyThemeButtonLabel() {
   const b = document.getElementById('theme-toggle');
-  if (b) b.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light mode' : 'Dark mode';
+  if (b) {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const sun = '<svg class="hdr-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>';
+    const moon = '<svg class="hdr-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+    b.innerHTML = (dark ? sun : moon) + `<span class="btn-label">${dark ? 'Light mode' : 'Dark mode'}</span>`;
+    b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', document.documentElement.dataset.theme === 'dark' ? '#08090B' : '#EEF2F8');
 }
@@ -6103,6 +6978,221 @@ render();
 renderReserves();
 renderInstallBanner();
 initSync();
+
+// ================= App feel on phones =================
+const isPhone = () => window.matchMedia('(max-width: 640px)').matches;
+
+// Remember the last tab; jump to the top when you switch, like an app.
+(function () {
+  let saved = null;
+  try { saved = localStorage.getItem('cc-tracker-tab'); } catch (e) {}
+  if (saved && document.querySelector(`.tab-btn[data-tab="${saved}"]`)) switchTab(saved);
+  document.getElementById('tab-bar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    try { localStorage.setItem('cc-tracker-tab', btn.dataset.tab); } catch (err) {}
+    window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (err) {} }
+  });
+})();
+
+// Card carousel dots (phones): one dot per card, the visible one highlighted.
+function updateCardDots() {
+  const list = document.getElementById('cards-list');
+  const dots = document.getElementById('cards-dots');
+  if (!list || !dots) return;
+  const cols = Array.from(list.querySelectorAll('.card-col'));
+  if (!isPhone() || cols.length < 2) { dots.innerHTML = ''; return; }
+  const mid = list.scrollLeft + list.clientWidth / 2;
+  let active = 0, best = Infinity;
+  cols.forEach((c, i) => { const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid); if (d < best) { best = d; active = i; } });
+  if (dots.childElementCount !== cols.length) dots.innerHTML = cols.map(() => '<i></i>').join('');
+  Array.from(dots.children).forEach((d, i) => d.classList.toggle('on', i === active));
+}
+document.getElementById('cards-list').addEventListener('scroll', () => requestAnimationFrame(updateCardDots), { passive: true });
+window.addEventListener('resize', updateCardDots);
+{
+  const baseRenderCards = renderCards;
+  renderCards = function () { const r = baseRenderCards.apply(this, arguments); requestAnimationFrame(updateCardDots); return r; };
+}
+
+// Floating + button opens the log form as a bottom sheet (phones).
+function openLogSheet() {
+  const box = document.getElementById('manual-log-box');
+  if (!box) return;
+  box.style.display = '';
+  document.body.classList.add('log-sheet-open');
+  setTimeout(() => { const a = document.getElementById('amount-input'); if (a) a.focus({ preventScroll: true }); }, 250);
+}
+function closeLogSheet() {
+  if (!document.body.classList.contains('log-sheet-open')) return;
+  document.body.classList.remove('log-sheet-open');
+  render();
+}
+document.getElementById('log-fab').addEventListener('click', openLogSheet);
+document.getElementById('sheet-backdrop').addEventListener('click', closeLogSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLogSheet(); });
+document.getElementById('add-btn').addEventListener('click', () => {
+  // The original handler clears the amount after a successful entry.
+  if (document.body.classList.contains('log-sheet-open') && !document.getElementById('amount-input').value) {
+    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+    setTimeout(closeLogSheet, 120);
+  }
+});
+
+// Pull down from the top to refresh: syncs your cloud data and pulls from Plaid.
+(function () {
+  const ptr = document.getElementById('ptr');
+  let startY = null, startX = 0, pull = 0, busy = false;
+  const THRESH = 72;
+  window.addEventListener('touchstart', (e) => {
+    if (busy || window.scrollY > 0 || document.body.classList.contains('log-sheet-open')) { startY = null; return; }
+    startY = e.touches[0].clientY; startX = e.touches[0].clientX; pull = 0;
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (startY == null) return;
+    const dy = e.touches[0].clientY - startY, dx = Math.abs(e.touches[0].clientX - startX);
+    if (dy <= 0 || dx > dy) { pull = 0; ptr.style.transform = ''; ptr.classList.remove('show', 'ready'); return; }
+    pull = Math.min(110, dy * 0.55);
+    ptr.classList.add('show');
+    ptr.classList.toggle('ready', pull >= THRESH * 0.55 * 1.0 && dy >= THRESH);
+    ptr.style.transform = `translate(-50%, ${pull}px) rotate(${dy * 2}deg)`;
+  }, { passive: true });
+  window.addEventListener('touchend', async () => {
+    if (startY == null) return;
+    const go = ptr.classList.contains('ready');
+    startY = null;
+    if (!go) { ptr.style.transform = ''; ptr.classList.remove('show', 'ready'); return; }
+    busy = true;
+    ptr.classList.add('spin');
+    ptr.style.transform = 'translate(-50%, 56px)';
+    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
+    try {
+      const plaidBtn = document.getElementById('plaid-sync-btn');
+      let connected = false;
+      try { connected = localStorage.getItem('cc-tracker-plaid-connected') === 'true'; } catch (err) {}
+      if (!(typeof DEMO_MODE !== 'undefined' && DEMO_MODE) && connected && typeof getPlaidAppSecret === 'function' && getPlaidAppSecret() && plaidBtn && !plaidBtn.disabled) plaidBtn.click();
+      document.getElementById('save-btn').click();
+    } catch (err) {}
+    setTimeout(() => {
+      ptr.classList.remove('spin', 'show', 'ready');
+      ptr.style.transform = '';
+      busy = false;
+    }, 1100);
+  });
+})();
+
+// ================= App lock (WebAuthn platform authenticator) =================
+const b64u = {
+  enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+  dec: str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4)), c => c.charCodeAt(0))
+};
+function getLockCfg() { try { return JSON.parse(localStorage.getItem('cc-tracker-lock') || 'null'); } catch (e) { return null; } }
+function setLockCfg(cfg) { try { cfg ? localStorage.setItem('cc-tracker-lock', JSON.stringify(cfg)) : localStorage.removeItem('cc-tracker-lock'); } catch (e) {} }
+async function lockSupported() {
+  try { return !!(window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch (e) { return false; }
+}
+async function turnOnLock() {
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const userId = crypto.getRandomValues(new Uint8Array(16));
+  const cred = await navigator.credentials.create({ publicKey: {
+    challenge, rp: { name: 'Payoff Tracker' },
+    user: { id: userId, name: 'payoff-tracker', displayName: 'Payoff Tracker' },
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+    authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
+    timeout: 60000, attestation: 'none'
+  }});
+  setLockCfg({ credId: b64u.enc(cred.rawId), after: 60000 });
+}
+async function verifyLock() {
+  const cfg = getLockCfg();
+  if (!cfg) return true;
+  await navigator.credentials.get({ publicKey: {
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials: [{ type: 'public-key', id: b64u.dec(cfg.credId), transports: ['internal'] }],
+    userVerification: 'required', timeout: 60000
+  }});
+  return true;
+}
+function lockNow() {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+  if (!getLockCfg()) return;
+  document.documentElement.classList.add('app-locked');
+  document.getElementById('lock-err').textContent = '';
+}
+function unlockedNow() {
+  document.documentElement.classList.remove('app-locked');
+  try { sessionStorage.setItem('cc-tracker-unlocked-at', String(Date.now())); } catch (e) {}
+}
+let lockFailures = 0;
+document.getElementById('lock-unlock-btn').addEventListener('click', async () => {
+  const err = document.getElementById('lock-err');
+  err.textContent = '';
+  try {
+    await verifyLock();
+    lockFailures = 0;
+    unlockedNow();
+  } catch (e) {
+    lockFailures++;
+    err.textContent = e && e.name === 'NotAllowedError' ? "That didn't work. Try again." : "Couldn't check your Face ID or fingerprint. Try again.";
+    if (lockFailures >= 2) document.getElementById('lock-reset-btn').hidden = false;
+  }
+});
+document.getElementById('lock-reset-btn').addEventListener('click', () => {
+  const cfg = getSyncConfig ? getSyncConfig() : null;
+  if (cfg && cfg.code) {
+    const typed = prompt('Enter your sync code to turn the lock off on this device:');
+    if (typed !== cfg.code) { document.getElementById('lock-err').textContent = "That sync code doesn't match."; return; }
+  } else if (!confirm('Turn the app lock off on this device?')) return;
+  setLockCfg(null);
+  unlockedNow();
+  renderLockSettings();
+});
+// Lock again after being away longer than the chosen time.
+let hiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  const cfg = getLockCfg();
+  if (!cfg) return;
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (hiddenAt != null && Date.now() - hiddenAt >= (cfg.after || 0)) lockNow();
+  hiddenAt = null;
+});
+
+async function renderLockSettings() {
+  const box = document.getElementById('lock-settings');
+  if (!box) return;
+  const cfg = getLockCfg();
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) { box.innerHTML = '<p class="sa-empty" style="padding:0">Not available in demo mode.</p>'; return; }
+  if (!cfg) {
+    const ok = await lockSupported();
+    box.innerHTML = ok
+      ? '<button type="button" class="primary" id="lock-on-btn">Turn on app lock</button><p class="lock-msg" id="lock-msg"></p>'
+      : '<p class="sa-empty" style="padding:0">This browser can\'t use Face ID, Touch ID or a fingerprint reader here. On iPhone, add the app to your Home Screen and open it from there.</p>';
+    const on = document.getElementById('lock-on-btn');
+    if (on) on.addEventListener('click', async () => {
+      try { await turnOnLock(); renderLockSettings(); }
+      catch (e) { document.getElementById('lock-msg').textContent = e && e.name === 'NotAllowedError' ? 'Setup was cancelled.' : "Couldn't turn the lock on: " + (e && e.message ? e.message : 'unknown error'); }
+    });
+    return;
+  }
+  const opt = (v, label) => `<option value="${v}"${(cfg.after || 0) === v ? ' selected' : ''}>${label}</option>`;
+  box.innerHTML = `
+    <div class="lock-row">
+      <span class="lock-on"><i></i>On for this device</span>
+      <label class="lock-after">Lock after
+        <select id="lock-after">${opt(0, 'Right away')}${opt(60000, '1 minute away')}${opt(300000, '5 minutes away')}${opt(900000, '15 minutes away')}</select>
+      </label>
+      <button type="button" id="lock-test-btn">Lock now</button>
+      <button type="button" class="reset-link danger-link" id="lock-off-btn">Turn off</button>
+    </div>`;
+  document.getElementById('lock-after').addEventListener('change', (e) => { const c = getLockCfg(); if (c) { c.after = parseInt(e.target.value, 10); setLockCfg(c); } });
+  document.getElementById('lock-test-btn').addEventListener('click', lockNow);
+  document.getElementById('lock-off-btn').addEventListener('click', async () => {
+    try { await verifyLock(); setLockCfg(null); renderLockSettings(); }
+    catch (e) { /* cancelled: leave it on */ }
+  });
+}
+renderLockSettings();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
